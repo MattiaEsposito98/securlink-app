@@ -1,30 +1,38 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:securlink/main.dart';
+import 'package:securlink/api/api_client.dart';
+import 'package:securlink/config.dart';
+import 'package:securlink/utils.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  group('estraiRefreshToken', () {
+    test('reads the jwt-auth refresh cookie among others', () {
+      const header = 'wordfence_verifiedHuman=abc; path=/, '
+          'refresh_token=42.9f86d081884c7d65; expires=Wed, 28-Oct-2026 10:00:00 GMT; path=/; secure; HttpOnly';
+      expect(estraiRefreshToken(header), '42.9f86d081884c7d65');
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    test('ignores missing or deleted cookies', () {
+      expect(estraiRefreshToken(null), isNull);
+      expect(estraiRefreshToken('other=1; path=/'), isNull);
+      expect(estraiRefreshToken('refresh_token=deleted; expires=Thu, 01-Jan-1970 00:00:01 GMT'), isNull);
+    });
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  test('nomeDaContentDisposition extracts a safe file name', () {
+    expect(nomeDaContentDisposition('attachment; filename="EV-2026-000123.pdf"'), 'EV-2026-000123.pdf');
+    expect(nomeDaContentDisposition('attachment; filename="a b/c.zip"'), 'a_b_c.zip');
+    expect(nomeDaContentDisposition(null), isNull);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('nomeEvidenza matches the web dashboard naming', () {
+    expect(nomeEvidenza(DateTime(2026, 9, 28, 15, 2, 9), 'jpg'), 'evidenza-20260928-150209.jpg');
+  });
+
+  test('video limit keeps a clip under the upload cap', () {
+    const maxBytes = 10 * 1024 * 1024;
+    final durata = durataMassimaVideo(maxBytes, kVideoBitrate, kAudioBitrate);
+    final byteStimati = durata.inSeconds * (kVideoBitrate + kAudioBitrate) / 8;
+    expect(byteStimati, lessThan(maxBytes));
+    expect(durata.inSeconds, greaterThan(40));
   });
 }

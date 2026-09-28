@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>securlink</string>
+	<string>Securlink</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -25,6 +25,16 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Securlink usa la fotocamera per scattare foto e registrare video dal vivo da certificare con marca temporale.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Securlink usa il microfono per registrare l'audio dei video da certificare.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Securlink usa la posizione GPS per certificare il luogo in cui sono state acquisite foto e video.</string>
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
