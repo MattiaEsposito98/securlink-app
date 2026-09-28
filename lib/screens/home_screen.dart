@@ -6,6 +6,9 @@ import '../sessione.dart';
 import '../widgets.dart';
 import 'camera_screen.dart';
 import 'evidenze_screen.dart';
+import 'password_screen.dart';
+
+enum _VoceAccount { password, esci }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -59,17 +62,45 @@ class _HomeScreenState extends State<HomeScreen> {
     final utente = SessioneScope.of(context).utente;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Securlink', style: TextStyle(fontWeight: FontWeight.w700)),
+        titleSpacing: 16,
+        title: Image.asset('assets/logo_orizzontale.png', height: 30, semanticLabel: 'Securlink'),
         actions: [
           if (utente != null)
             Padding(
               padding: const EdgeInsets.only(right: 4),
               child: Center(child: BadgeAmbiente(isTest: utente.isTest, compatto: true)),
             ),
-          IconButton(
-            tooltip: 'Esci',
-            icon: const Icon(Icons.logout),
-            onPressed: _confermaLogout,
+          PopupMenuButton<_VoceAccount>(
+            tooltip: 'Account',
+            icon: const Icon(Icons.account_circle_outlined),
+            onSelected: (voce) => switch (voce) {
+              _VoceAccount.password => Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const PasswordScreen()),
+                ),
+              _VoceAccount.esci => _confermaLogout(),
+            },
+            itemBuilder: (context) => [
+              if (utente != null)
+                PopupMenuItem<_VoceAccount>(
+                  enabled: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(utente.nome, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+                      Text(utente.email, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                    ],
+                  ),
+                ),
+              if (utente != null) const PopupMenuDivider(),
+              const PopupMenuItem(
+                value: _VoceAccount.password,
+                child: ListTile(leading: Icon(Icons.key_outlined), title: Text('Cambia password'), contentPadding: EdgeInsets.zero),
+              ),
+              const PopupMenuItem(
+                value: _VoceAccount.esci,
+                child: ListTile(leading: Icon(Icons.logout), title: Text('Esci'), contentPadding: EdgeInsets.zero),
+              ),
+            ],
           ),
         ],
       ),
@@ -164,6 +195,7 @@ class _CertificaTab extends StatelessWidget {
                     child: LinearProgressIndicator(
                       value: u.limiteMese! == 0 ? 1 : ((u.usateMese ?? 0) / u.limiteMese!).clamp(0, 1).toDouble(),
                       minHeight: 8,
+                      color: kArancio,
                       backgroundColor: kBrandSoft,
                     ),
                   ),

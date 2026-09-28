@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
-import '../config.dart';
 import '../sessione.dart';
 import '../widgets.dart';
 
@@ -67,20 +66,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(color: kBrand, borderRadius: BorderRadius.circular(20)),
-                        child: const Icon(Icons.verified_user, color: Colors.white, size: 38),
-                      ),
+                      Image.asset('assets/logo_verticale.png', height: 150, semanticLabel: 'Securlink by Securlav'),
                       const SizedBox(height: 20),
-                      Text('Securlink', textAlign: TextAlign.center, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 6),
                       Text(
                         'Certificazione di foto e video per i preposti',
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xFF475569)),
+                        style: theme.textTheme.bodyLarge?.copyWith(color: const Color(0xFF475569)),
                       ),
                       const SizedBox(height: 32),
                       TextFormField(

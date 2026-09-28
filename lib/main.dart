@@ -20,7 +20,12 @@ class SecurlinkApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final schema = ColorScheme.fromSeed(seedColor: kBrand, primary: kBrand, surface: Colors.white);
+    final schema = ColorScheme.fromSeed(
+      seedColor: kBrand,
+      primary: kBrand,
+      secondary: kArancio,
+      surface: Colors.white,
+    );
     return SessioneScope(
       sessione: sessione,
       child: MaterialApp(
@@ -30,9 +35,28 @@ class SecurlinkApp extends StatelessWidget {
           colorScheme: schema,
           scaffoldBackgroundColor: const Color(0xFFF1F5F9),
           appBarTheme: const AppBarTheme(
-            backgroundColor: kBrand,
-            foregroundColor: Colors.white,
-            systemOverlayStyle: SystemUiOverlayStyle.light,
+            backgroundColor: Colors.white,
+            foregroundColor: kBrand,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            scrolledUnderElevation: 1,
+            shadowColor: Color(0x22000000),
+            titleTextStyle: TextStyle(color: kBrand, fontSize: 18, fontWeight: FontWeight.w700),
+            systemOverlayStyle: SystemUiOverlayStyle.dark,
+          ),
+          navigationBarTheme: NavigationBarThemeData(
+            backgroundColor: Colors.white,
+            indicatorColor: kArancio.withValues(alpha: .16),
+            iconTheme: WidgetStateProperty.resolveWith(
+              (s) => IconThemeData(color: s.contains(WidgetState.selected) ? kArancio : const Color(0xFF64748B)),
+            ),
+            labelTextStyle: WidgetStateProperty.resolveWith(
+              (s) => TextStyle(
+                fontSize: 12,
+                fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+                color: s.contains(WidgetState.selected) ? kBrand : const Color(0xFF64748B),
+              ),
+            ),
           ),
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(

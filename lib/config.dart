@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 const String kBaseUrl = 'https://securlink.securlav.it';
 const String kAppVersion = '1.0.0';
 
-const Color kBrand = Color(0xFF1E40AF);
-const Color kBrandSoft = Color(0xFFEEF4FF);
+// Securlink logo colours.
+const Color kBrand = Color(0xFF014488);
+const Color kArancio = Color(0xFFF07D00);
+const Color kBrandSoft = Color(0xFFE8EFF7);
 const Color kOk = Color(0xFF047857);
 const Color kErrore = Color(0xFFB91C1C);
 const Color kAmbra = Color(0xFFB45309);

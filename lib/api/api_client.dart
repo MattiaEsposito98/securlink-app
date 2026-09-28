@@ -129,6 +129,15 @@ class SecurlinkApi {
     return Utente.fromJson(json);
   }
 
+  Future<void> cambiaPassword({required String attuale, required String nuova}) async {
+    final res = await _autenticata((headers) => _http.post(
+          _uri('/wp-json/securlink/v1/preposto/password'),
+          headers: headers,
+          body: {'password_attuale': attuale, 'nuova_password': nuova},
+        ));
+    _verificaOk(res);
+  }
+
   Future<EsitoCertificazione> certifica({
     required File file,
     required double lat,
@@ -265,6 +274,10 @@ class SecurlinkApi {
 
   void _verificaOk(http.Response res) {
     if (res.statusCode >= 200 && res.statusCode < 300) return;
+    // 5xx bodies are WordPress's generic HTML "critical error" page: useless to the user.
+    if (res.statusCode >= 500) {
+      throw ApiException('Errore interno del server (${res.statusCode}). Riprova tra poco; se si ripete contatta Securlav.');
+    }
     throw ApiException(_messaggio(_decodifica(res)) ?? 'Errore del server (${res.statusCode}).');
   }
 
