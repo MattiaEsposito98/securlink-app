@@ -18,6 +18,28 @@ void main() {
     });
   });
 
+  group('login response', () {
+    test('reads the token only when data is an object', () {
+      expect(tokenDaRisposta({'success': true, 'data': {'token': 'abc'}}), 'abc');
+      expect(tokenDaRisposta({'success': false, 'data': []}), isNull);
+    });
+
+    test('wrong credentials give a clean Italian message', () {
+      final json = {
+        'success': false,
+        'code': 'incorrect_password',
+        'message': 'ERRORE: Nome Utente Password non corretti. Recupera Password',
+        'data': [],
+      };
+      expect(messaggioLoginFallito(json), 'Nome utente o password non corretti.');
+    });
+
+    test('other server messages are shown without HTML or prefix', () {
+      final json = {'code': 'too_many_attempts', 'message': '<strong>ERRORE:</strong> Troppi tentativi, riprova più tardi.'};
+      expect(messaggioLoginFallito(json), 'Troppi tentativi, riprova più tardi.');
+    });
+  });
+
   test('nomeDaContentDisposition extracts a safe file name', () {
     expect(nomeDaContentDisposition('attachment; filename="EV-2026-000123.pdf"'), 'EV-2026-000123.pdf');
     expect(nomeDaContentDisposition('attachment; filename="a b/c.zip"'), 'a_b_c.zip');

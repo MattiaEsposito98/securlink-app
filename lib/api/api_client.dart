@@ -73,9 +73,9 @@ class SecurlinkApi {
           body: {'username': username, 'password': password, 'device': _device},
         ));
     final json = _decodifica(res);
-    final token = (json['data'] as Map?)?['token'] as String?;
+    final token = tokenDaRisposta(json);
     if (res.statusCode != 200 || json['success'] != true || token == null) {
-      throw ApiException(_messaggio(json) ?? 'Accesso non riuscito.');
+      throw ApiException(messaggioLoginFallito(json));
     }
     _token = token;
     _refresh = estraiRefreshToken(res.headers['set-cookie']) ?? _refresh;
@@ -113,8 +113,7 @@ class SecurlinkApi {
           headers: {..._headersBase(), 'Cookie': 'refresh_token=$_refresh'},
           body: {'device': _device},
         ));
-    final json = _decodifica(res);
-    final token = (json['data'] as Map?)?['token'] as String?;
+    final token = tokenDaRisposta(_decodifica(res));
     if (res.statusCode != 200 || token == null) return false;
     _token = token;
     await _salvaToken();
@@ -308,6 +307,23 @@ class SecurlinkApi {
     }
     return 'SecurlinkPreposto/$kAppVersion';
   }
+}
+
+/// jwt-auth sends `data` as an object on success but as an empty list on errors.
+String? tokenDaRisposta(Map<String, dynamic> json) {
+  final data = json['data'];
+  return data is Map ? data['token'] as String? : null;
+}
+
+String messaggioLoginFallito(Map<String, dynamic> json) {
+  const credenzialiErrate = {'incorrect_password', 'invalid_username', 'invalid_email', 'empty_username', 'empty_password'};
+  if (credenzialiErrate.contains(json['code'])) return 'Nome utente o password non corretti.';
+  final msg = json['message'];
+  if (msg is String && msg.isNotEmpty) {
+    // WordPress messages may carry HTML (links, <strong>) and an "ERRORE:" prefix.
+    return msg.replaceAll(RegExp(r'<[^>]*>'), '').replaceFirst(RegExp(r'^\s*ERRORE:\s*', caseSensitive: false), '').trim();
+  }
+  return 'Accesso non riuscito.';
 }
 
 String? estraiRefreshToken(String? setCookie) {

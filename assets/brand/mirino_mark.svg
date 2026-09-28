@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs><clipPath id="taglio"><path d="M250 277 L380 237 L380 720 L250 720 Z"/></clipPath></defs>
+  <path d="M128 312 V128 H312 M712 128 H896 V312 M896 712 V896 H712 M312 896 H128 V712" fill="none" stroke="#014488" stroke-width="50"/>
+  <g fill="none" stroke-width="66">
+    <path d="M322 230 V480 Q322 560 359 636" stroke="#014488" clip-path="url(#taglio)"/>
+    <path d="M425 262 Q590 226 701 290 V466" stroke="#F07D00"/>
+    <path d="M697 538 Q662 700 513 800 L401 700" stroke="#F07D00"/>
+  </g>
+  <path d="M512 664 C446 588 424 550 424 500 A88 88 0 0 1 600 500 C600 550 578 588 512 664 Z" fill="#014488"/>
+  <circle cx="512" cy="498" r="33" fill="#FFFFFF"/>
+</svg>
