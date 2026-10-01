@@ -16,10 +16,11 @@ enum _Fase { pronto, posizione, invio }
 /// Shows the capture, collects the note, then GPS + upload + timestamp.
 /// Pops `true` once certified, `false` to retake.
 class ReviewScreen extends StatefulWidget {
-  const ReviewScreen({super.key, required this.file, required this.isVideo});
+  const ReviewScreen({super.key, required this.file, required this.isVideo, required this.conformita});
 
   final File file;
   final bool isVideo;
+  final Conformita conformita;
 
   @override
   State<ReviewScreen> createState() => _ReviewScreenState();
@@ -56,6 +57,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Future<void> _certifica() async {
     FocusScope.of(context).unfocus();
+    final descrizione = _nota.text.trim();
+    if (descrizione.isEmpty) {
+      _mostraErrore('La descrizione è obbligatoria: spiega perché è ${widget.conformita == Conformita.conforme ? 'conforme' : 'non conforme'}.');
+      return;
+    }
     _video?.pause();
     final sessione = SessioneScope.read(context);
     setState(() {
@@ -72,7 +78,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
         lat: pos.latitude,
         lon: pos.longitude,
         accuratezza: pos.accuracy,
-        nota: _nota.text.trim(),
+        conformita: widget.conformita,
+        descrizione: descrizione,
       );
       if (!mounted) return;
       await _mostraSuccesso(esito);
@@ -170,6 +177,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 ),
               ],
             ),
+            Align(alignment: Alignment.centerLeft, child: BadgeConformita(conformita: widget.conformita)),
             const SizedBox(height: 12),
             TextField(
               controller: _nota,
@@ -178,9 +186,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
               minLines: 2,
               maxLines: 5,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                labelText: 'Nota / descrizione (facoltativa)',
-                hintText: 'Es. facciata nord, verifica ponteggio dopo montaggio...',
+              onChanged: (_) {
+                if (_errore != null) setState(() => _errore = null);
+              },
+              decoration: InputDecoration(
+                labelText: 'Descrizione (obbligatoria)',
+                hintText: widget.conformita.suggerimentoDescrizione,
                 alignLabelWithHint: true,
               ),
             ),

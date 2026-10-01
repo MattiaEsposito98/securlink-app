@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../api/models.dart';
 import '../config.dart';
 import '../sessione.dart';
 import '../utils.dart';
@@ -15,9 +16,10 @@ enum ModalitaAcquisizione { foto, video }
 
 /// Live capture only: there is deliberately no way to pick an existing file.
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key, required this.modalita});
+  const CameraScreen({super.key, required this.modalita, required this.conformita});
 
   final ModalitaAcquisizione modalita;
+  final Conformita conformita;
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -242,7 +244,9 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     await _controller?.pausePreview().catchError((_) {});
     if (!mounted) return;
     final certificata = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => ReviewScreen(file: file, isVideo: isVideo)),
+      MaterialPageRoute(
+        builder: (_) => ReviewScreen(file: file, isVideo: isVideo, conformita: widget.conformita),
+      ),
     );
     _inRevisione = false;
     file.delete().ignore();
@@ -312,8 +316,8 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(99)),
                   child: Text(
-                    _isVideo ? 'VIDEO' : 'FOTO',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: 1),
+                    '${_isVideo ? 'VIDEO' : 'FOTO'} · ${widget.conformita.etichetta.toUpperCase()}',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: .8, fontSize: 13),
                   ),
                 ),
               const Spacer(),

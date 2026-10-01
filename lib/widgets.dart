@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import 'api/models.dart';
 import 'config.dart';
 
 /// Tap-to-play video with a progress bar; the controller must be initialised.
@@ -113,6 +114,33 @@ class BadgeAmbiente extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(testo, style: TextStyle(color: colore, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: .3)),
+    );
+  }
+}
+
+class BadgeConformita extends StatelessWidget {
+  const BadgeConformita({super.key, required this.conformita});
+
+  final Conformita conformita;
+
+  @override
+  Widget build(BuildContext context) {
+    final ok = conformita == Conformita.conforme;
+    final colore = ok ? kOk : kErrore;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: ok ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(ok ? Icons.check_circle : Icons.warning_amber_rounded, size: 14, color: colore),
+          const SizedBox(width: 4),
+          Text(conformita.etichetta, style: TextStyle(color: colore, fontSize: 11, fontWeight: FontWeight.w700)),
+        ],
+      ),
     );
   }
 }

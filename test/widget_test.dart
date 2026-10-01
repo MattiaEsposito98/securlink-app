@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:securlink/api/api_client.dart';
+import 'package:securlink/api/models.dart';
 import 'package:securlink/config.dart';
 import 'package:securlink/utils.dart';
 
@@ -37,6 +38,28 @@ void main() {
     test('other server messages are shown without HTML or prefix', () {
       final json = {'code': 'too_many_attempts', 'message': '<strong>ERRORE:</strong> Troppi tentativi, riprova più tardi.'};
       expect(messaggioLoginFallito(json), 'Troppi tentativi, riprova più tardi.');
+    });
+  });
+
+  group('conformita', () {
+    test('maps the server values and tolerates old evidences without one', () {
+      expect(Conformita.daApi('conforme'), Conformita.conforme);
+      expect(Conformita.daApi('non_conforme'), Conformita.nonConforme);
+      expect(Conformita.daApi(''), isNull);
+      expect(Conformita.daApi(null), isNull);
+    });
+
+    test('evidence reads the new description and falls back to the old note', () {
+      final nuova = Evidenza.fromJson({
+        'id': 7, 'codice': 'EV-1', 'descrizione': 'Ponteggio ok', 'nota': 'Ponteggio ok',
+        'esito_conformita': 'conforme',
+      });
+      expect(nuova.descrizione, 'Ponteggio ok');
+      expect(nuova.conformita, Conformita.conforme);
+
+      final vecchia = Evidenza.fromJson({'id': 8, 'nota': 'Foto', 'esito_conformita': ''});
+      expect(vecchia.descrizione, 'Foto');
+      expect(vecchia.conformita, isNull);
     });
   });
 

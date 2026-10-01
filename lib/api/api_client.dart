@@ -142,13 +142,15 @@ class SecurlinkApi {
     required double lat,
     required double lon,
     required double accuratezza,
-    String nota = '',
+    required Conformita conformita,
+    required String descrizione,
   }) async {
     final res = await _autenticata((headers) async {
       final req = http.MultipartRequest('POST', _uri('/wp-json/securlink/v1/preposto/certifica'))
         ..headers.addAll(headers)
         ..fields.addAll({
-          'nota': nota,
+          'esito_conformita': conformita.valoreApi,
+          'descrizione': descrizione,
           'gps_lat': '$lat',
           'gps_lon': '$lon',
           'gps_accuratezza': '$accuratezza',
@@ -159,9 +161,13 @@ class SecurlinkApi {
     return EsitoCertificazione.fromJson(_jsonOk(res));
   }
 
-  Future<PaginaEvidenze> evidenze({String cerca = '', int pagina = 1}) async {
-    final json = await _getJson('/wp-json/securlink/v1/preposto/evidenze',
-        query: {'s': cerca, 'page': '$pagina', 'per_page': '20'});
+  Future<PaginaEvidenze> evidenze({String cerca = '', Conformita? conformita, int pagina = 1}) async {
+    final json = await _getJson('/wp-json/securlink/v1/preposto/evidenze', query: {
+      's': cerca,
+      if (conformita != null) 'esito': conformita.valoreApi,
+      'page': '$pagina',
+      'per_page': '20',
+    });
     return PaginaEvidenze.fromJson(json);
   }
 

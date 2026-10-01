@@ -26,6 +26,7 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
   Timer? _debounce;
 
   final List<Evidenza> _evidenze = [];
+  Conformita? _filtro;
   int _pagina = 0;
   int _pagine = 1;
   int _totale = 0;
@@ -55,6 +56,8 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
 
   Future<void> _ricarica() => _carica(1);
 
+  bool get _filtriAttivi => _cerca.text.trim().isNotEmpty || _filtro != null;
+
   Future<void> _carica(int pagina) async {
     final id = ++_richiesta;
     setState(() {
@@ -62,7 +65,9 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
       if (pagina == 1) _errore = null;
     });
     try {
-      final risultato = await SessioneScope.read(context).api.evidenze(cerca: _cerca.text.trim(), pagina: pagina);
+      final risultato = await SessioneScope.read(context)
+          .api
+          .evidenze(cerca: _cerca.text.trim(), conformita: _filtro, pagina: pagina);
       if (!mounted || id != _richiesta) return;
       setState(() {
         if (pagina == 1) _evidenze.clear();
@@ -123,6 +128,30 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Row(
+            children: [
+              for (final voce in <(String, Conformita?)>[
+                ('Tutte', null),
+                ('Conformi', Conformita.conforme),
+                ('Non conformi', Conformita.nonConforme),
+              ]) ...[
+                ChoiceChip(
+                  label: Text(voce.$1),
+                  selected: _filtro == voce.$2,
+                  showCheckmark: false,
+                  onSelected: (_) {
+                    if (_filtro == voce.$2) return;
+                    setState(() => _filtro = voce.$2);
+                    _ricarica();
+                  },
+                ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
+        ),
         Expanded(child: _contenuto()),
       ],
     );
@@ -147,11 +176,11 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 StatoVuoto(
-                  icona: _cerca.text.isEmpty ? Icons.folder_open : Icons.search_off,
-                  titolo: _cerca.text.isEmpty ? 'Nessuna evidenza certificata' : 'Nessun risultato',
-                  testo: _cerca.text.isEmpty
-                      ? 'Le foto e i video che certifichi compariranno qui.'
-                      : 'Nessuna evidenza corrisponde a «${_cerca.text.trim()}».',
+                  icona: _filtriAttivi ? Icons.search_off : Icons.folder_open,
+                  titolo: _filtriAttivi ? 'Nessun risultato' : 'Nessuna evidenza certificata',
+                  testo: _filtriAttivi
+                      ? 'Nessuna evidenza corrisponde alla ricerca o al filtro scelto.'
+                      : 'Le foto e i video che certifichi compariranno qui.',
                 ),
               ],
             )
@@ -221,11 +250,16 @@ class _RigaEvidenza extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Text(e.data, style: const TextStyle(color: Color(0xFF475569), fontSize: 13)),
-                    if (e.nota.isNotEmpty) ...[
-                      const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Expanded(child: Text(e.data, style: const TextStyle(color: Color(0xFF475569), fontSize: 13))),
+                        if (e.conformita != null) BadgeConformita(conformita: e.conformita!),
+                      ],
+                    ),
+                    if (e.descrizione.isNotEmpty) ...[
+                      const SizedBox(height: 4),
                       Text(
-                        e.nota,
+                        e.descrizione,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),

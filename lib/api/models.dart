@@ -43,6 +43,32 @@ class Utente {
       };
 }
 
+/// What the preposto declares when certifying: the photo/video documents
+/// something that complies with the rules, or an irregularity.
+enum Conformita {
+  conforme('conforme', 'Conforme', 'Conformità', 'tutto a norma'),
+  nonConforme('non_conforme', 'Non conforme', 'Non conformità', 'irregolarità riscontrata');
+
+  const Conformita(this.valoreApi, this.etichetta, this.titolo, this.sottotitolo);
+
+  final String valoreApi;
+  final String etichetta;
+  final String titolo;
+  final String sottotitolo;
+
+  String get suggerimentoDescrizione => this == conforme
+      ? 'Spiega perché è conforme: cosa hai verificato e rispetto a quale requisito.'
+      : 'Descrivi la non conformità riscontrata: cosa non è a norma e dove.';
+
+  /// Null for evidences certified before this declaration existed.
+  static Conformita? daApi(String? valore) {
+    for (final c in values) {
+      if (c.valoreApi == valore) return c;
+    }
+    return null;
+  }
+}
+
 class Evidenza {
   Evidenza({
     required this.id,
@@ -50,8 +76,9 @@ class Evidenza {
     required this.nomeFile,
     required this.data,
     required this.ambiente,
-    required this.nota,
+    required this.descrizione,
     required this.mime,
+    this.conformita,
   });
 
   factory Evidenza.fromJson(Map<String, dynamic> json) => Evidenza(
@@ -60,8 +87,9 @@ class Evidenza {
         nomeFile: json['nome_file'] as String? ?? '',
         data: json['data'] as String? ?? '',
         ambiente: json['ambiente'] as String? ?? '',
-        nota: json['nota'] as String? ?? '',
+        descrizione: json['descrizione'] as String? ?? json['nota'] as String? ?? '',
         mime: json['mime'] as String? ?? '',
+        conformita: Conformita.daApi(json['esito_conformita'] as String?),
       );
 
   final int id;
@@ -69,8 +97,9 @@ class Evidenza {
   final String nomeFile;
   final String data;
   final String ambiente;
-  final String nota;
+  final String descrizione;
   final String mime;
+  final Conformita? conformita;
 
   bool get isVideo => mime.startsWith('video/');
   bool get isTest => ambiente != 'production';

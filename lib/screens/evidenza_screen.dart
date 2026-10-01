@@ -120,7 +120,12 @@ class _EvidenzaScreenState extends State<EvidenzaScreen> {
                   etichetta: 'Ambiente',
                   child: Align(alignment: Alignment.centerLeft, child: BadgeAmbiente(isTest: _e.isTest)),
                 ),
-                if (_e.nota.isNotEmpty) _Riga(etichetta: 'Nota', valore: _e.nota),
+                if (_e.conformita != null)
+                  _Riga(
+                    etichetta: 'Esito',
+                    child: Align(alignment: Alignment.centerLeft, child: BadgeConformita(conformita: _e.conformita!)),
+                  ),
+                if (_e.descrizione.isNotEmpty) _Riga(etichetta: 'Descrizione', valore: _e.descrizione),
               ],
             ),
           ),
@@ -269,7 +274,7 @@ class _Riga extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 80, child: Text(etichetta, style: const TextStyle(color: Color(0xFF94A3B8)))),
+          SizedBox(width: 96, child: Text(etichetta, style: const TextStyle(color: Color(0xFF94A3B8)))),
           Expanded(
             child: child ??
                 SelectableText(
