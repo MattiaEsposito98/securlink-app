@@ -16,11 +16,13 @@ enum _Fase { pronto, posizione, invio }
 /// Shows the capture, collects the note, then GPS + upload + timestamp.
 /// Pops `true` once certified, `false` to retake.
 class ReviewScreen extends StatefulWidget {
-  const ReviewScreen({super.key, required this.file, required this.isVideo, required this.conformita});
+  const ReviewScreen({super.key, required this.file, required this.isVideo, required this.segnalazione});
 
   final File file;
   final bool isVideo;
-  final Conformita conformita;
+  final Segnalazione segnalazione;
+
+  Conformita get conformita => segnalazione.conformita;
 
   @override
   State<ReviewScreen> createState() => _ReviewScreenState();
@@ -78,7 +80,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         lat: pos.latitude,
         lon: pos.longitude,
         accuratezza: pos.accuracy,
-        conformita: widget.conformita,
+        segnalazione: widget.segnalazione,
         descrizione: descrizione,
       );
       if (!mounted) return;
@@ -177,7 +179,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 ),
               ],
             ),
-            Align(alignment: Alignment.centerLeft, child: BadgeConformita(conformita: widget.conformita)),
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                BadgeConformita(conformita: widget.conformita),
+                Text(
+                  [widget.segnalazione.area, if (widget.segnalazione.nonConformita != null) widget.segnalazione.nonConformita!].join(' · '),
+                  style: const TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: _nota,

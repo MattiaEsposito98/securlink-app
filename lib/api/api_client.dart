@@ -137,19 +137,48 @@ class SecurlinkApi {
     _verificaOk(res);
   }
 
+  Future<ElenchiVoci> voci() async {
+    return ElenchiVoci.fromJson(await _getJson('/wp-json/securlink/v1/preposto/voci'));
+  }
+
+  /// Creates an entry (or returns the existing one with the same name) and
+  /// the refreshed list.
+  Future<({String valore, List<String> voci})> aggiungiVoce(TipoVoce tipo, String valore) async {
+    final res = await _autenticata((headers) => _http.post(
+          _uri('/wp-json/securlink/v1/preposto/voci'),
+          headers: headers,
+          body: {'tipo': tipo.valoreApi, 'valore': valore},
+        ));
+    final json = _jsonOk(res);
+    return (valore: json['valore'] as String, voci: List<String>.from(json['voci'] as List));
+  }
+
+  /// Removes an entry from the family's list (any user of the group can).
+  /// Already certified evidences keep their text. Returns the updated list.
+  Future<List<String>> eliminaVoce(TipoVoce tipo, String valore) async {
+    final res = await _autenticata((headers) => _http.post(
+          _uri('/wp-json/securlink/v1/preposto/voci/elimina'),
+          headers: headers,
+          body: {'tipo': tipo.valoreApi, 'valore': valore},
+        ));
+    return List<String>.from(_jsonOk(res)['voci'] as List);
+  }
+
   Future<EsitoCertificazione> certifica({
     required File file,
     required double lat,
     required double lon,
     required double accuratezza,
-    required Conformita conformita,
+    required Segnalazione segnalazione,
     required String descrizione,
   }) async {
     final res = await _autenticata((headers) async {
       final req = http.MultipartRequest('POST', _uri('/wp-json/securlink/v1/preposto/certifica'))
         ..headers.addAll(headers)
         ..fields.addAll({
-          'esito_conformita': conformita.valoreApi,
+          'esito_conformita': segnalazione.conformita.valoreApi,
+          'area': segnalazione.area,
+          if (segnalazione.nonConformita != null) 'non_conformita': segnalazione.nonConformita!,
           'descrizione': descrizione,
           'gps_lat': '$lat',
           'gps_lon': '$lon',

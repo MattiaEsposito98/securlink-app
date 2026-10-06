@@ -16,10 +16,10 @@ enum ModalitaAcquisizione { foto, video }
 
 /// Live capture only: there is deliberately no way to pick an existing file.
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key, required this.modalita, required this.conformita});
+  const CameraScreen({super.key, required this.modalita, required this.segnalazione});
 
   final ModalitaAcquisizione modalita;
-  final Conformita conformita;
+  final Segnalazione segnalazione;
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -245,7 +245,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     if (!mounted) return;
     final certificata = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => ReviewScreen(file: file, isVideo: isVideo, conformita: widget.conformita),
+        builder: (_) => ReviewScreen(file: file, isVideo: isVideo, segnalazione: widget.segnalazione),
       ),
     );
     _inRevisione = false;
@@ -316,7 +316,7 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(99)),
                   child: Text(
-                    '${_isVideo ? 'VIDEO' : 'FOTO'} · ${widget.conformita.etichetta.toUpperCase()}',
+                    '${_isVideo ? 'VIDEO' : 'FOTO'} · ${widget.segnalazione.conformita.etichetta.toUpperCase()}',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: .8, fontSize: 13),
                   ),
                 ),

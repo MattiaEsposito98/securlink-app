@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../api/api_client.dart';
 import '../api/models.dart';
+import '../campo_voce.dart';
 import '../config.dart';
 import '../sessione.dart';
 import '../widgets.dart';
@@ -22,8 +24,20 @@ class _HomeScreenState extends State<HomeScreen> {
   // Chosen before capturing; cleared after each certification so the next
   // one is a conscious choice again.
   Conformita? _conformita;
+  String? _area;
+  String? _nonConformita;
+  // Area / non-conformity lists of the user's account family.
+  ElenchiVoci _voci = const ElenchiVoci();
+  bool _vociCaricate = false;
+  String? _erroreVoci;
   // Bumped after each certification so the evidence list reloads.
   final _versioneEvidenze = ValueNotifier<int>(0);
+
+  @override
+  void initState() {
+    super.initState();
+    _caricaVoci();
+  }
 
   @override
   void dispose() {
@@ -31,19 +45,82 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  Future<void> _caricaVoci() async {
+    setState(() => _erroreVoci = null);
+    try {
+      final voci = await SessioneScope.read(context).api.voci();
+      if (mounted) {
+        setState(() {
+          _voci = voci;
+          _vociCaricate = true;
+        });
+      }
+    } on SessioneScadutaException {
+      // Handled by the session listener.
+    } on ApiException catch (e) {
+      if (mounted) setState(() => _erroreVoci = e.message);
+    }
+  }
+
+  Future<String> _creaVoce(TipoVoce tipo, String testo) async {
+    final risultato = await SessioneScope.read(context).api.aggiungiVoce(tipo, testo);
+    if (mounted) setState(() => _voci = _voci.con(tipo, risultato.voci));
+    return risultato.valore;
+  }
+
+  Future<List<String>> _eliminaVoce(TipoVoce tipo, String testo) async {
+    final voci = await SessioneScope.read(context).api.eliminaVoce(tipo, testo);
+    if (mounted) {
+      setState(() {
+        _voci = _voci.con(tipo, voci);
+        // A deleted entry can no longer be the chosen one.
+        if (tipo == TipoVoce.area && _area == testo) _area = null;
+        if (tipo == TipoVoce.nonConformita && _nonConformita == testo) _nonConformita = null;
+      });
+    }
+    return voci;
+  }
+
+  void _scegliConformita(Conformita c) {
+    setState(() {
+      _conformita = c;
+      if (c == Conformita.conforme) _nonConformita = null;
+    });
+  }
+
+  /// Type, area and (for a non-conformity) which one are all chosen.
+  bool get _segnalazioneCompleta =>
+      _conformita != null && _area != null && (_conformita == Conformita.conforme || _nonConformita != null);
+
   Future<void> _acquisisci(ModalitaAcquisizione modalita) async {
     final conformita = _conformita;
-    if (conformita == null) {
+    final mancante = conformita == null
+        ? 'Scegli prima se è una conformità o una non conformità.'
+        : _area == null
+            ? 'Scegli l\'area.'
+            : (conformita == Conformita.nonConforme && _nonConformita == null)
+                ? 'Scegli la non conformità.'
+                : null;
+    if (mancante != null) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Scegli prima se è una conformità o una non conformità.')));
+        ..showSnackBar(SnackBar(content: Text(mancante)));
       return;
     }
+    final segnalazione = Segnalazione(
+      conformita: conformita!,
+      area: _area!,
+      nonConformita: conformita == Conformita.nonConforme ? _nonConformita : null,
+    );
     final certificata = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => CameraScreen(modalita: modalita, conformita: conformita)),
+      MaterialPageRoute(builder: (_) => CameraScreen(modalita: modalita, segnalazione: segnalazione)),
     );
     if (certificata == true && mounted) {
-      setState(() => _conformita = null);
+      setState(() {
+        _conformita = null;
+        _area = null;
+        _nonConformita = null;
+      });
       _versioneEvidenze.value++;
       SessioneScope.read(context).aggiornaUtente();
     }
@@ -121,7 +198,18 @@ class _HomeScreenState extends State<HomeScreen> {
           _CertificaTab(
             utente: utente,
             conformita: _conformita,
-            onConformita: (c) => setState(() => _conformita = c),
+            onConformita: _scegliConformita,
+            voci: _voci,
+            vociCaricate: _vociCaricate,
+            erroreVoci: _erroreVoci,
+            onRiprovaVoci: _caricaVoci,
+            area: _area,
+            onArea: (v) => setState(() => _area = v),
+            nonConformita: _nonConformita,
+            onNonConformita: (v) => setState(() => _nonConformita = v),
+            onCreaVoce: _creaVoce,
+            onEliminaVoce: _eliminaVoce,
+            segnalazioneCompleta: _segnalazioneCompleta,
             onAcquisisci: _acquisisci,
           ),
           EvidenzeScreen(versione: _versioneEvidenze),
@@ -144,12 +232,34 @@ class _CertificaTab extends StatelessWidget {
     required this.utente,
     required this.conformita,
     required this.onConformita,
+    required this.voci,
+    required this.vociCaricate,
+    required this.erroreVoci,
+    required this.onRiprovaVoci,
+    required this.area,
+    required this.onArea,
+    required this.nonConformita,
+    required this.onNonConformita,
+    required this.onCreaVoce,
+    required this.onEliminaVoce,
+    required this.segnalazioneCompleta,
     required this.onAcquisisci,
   });
 
   final Utente? utente;
   final Conformita? conformita;
   final void Function(Conformita) onConformita;
+  final ElenchiVoci voci;
+  final bool vociCaricate;
+  final String? erroreVoci;
+  final VoidCallback onRiprovaVoci;
+  final String? area;
+  final ValueChanged<String> onArea;
+  final String? nonConformita;
+  final ValueChanged<String> onNonConformita;
+  final CreaVoce onCreaVoce;
+  final EliminaVoce onEliminaVoce;
+  final bool segnalazioneCompleta;
   final void Function(ModalitaAcquisizione) onAcquisisci;
 
   @override
@@ -199,6 +309,40 @@ class _CertificaTab extends StatelessWidget {
             ],
           ],
         ),
+        if (conformita != null) ...[
+          const SizedBox(height: 16),
+          if (erroreVoci != null)
+            BoxMessaggio(
+              testo: 'Impossibile caricare gli elenchi di area e non conformità. $erroreVoci',
+              azione: TextButton(onPressed: onRiprovaVoci, child: const Text('Riprova')),
+            )
+          else if (!vociCaricate)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5))),
+            )
+          else ...[
+            CampoVoce(
+              tipo: TipoVoce.area,
+              voci: voci.aree,
+              valore: area,
+              onScelta: onArea,
+              onCrea: onCreaVoce,
+              onElimina: onEliminaVoce,
+            ),
+            if (conformita == Conformita.nonConforme) ...[
+              const SizedBox(height: 14),
+              CampoVoce(
+                tipo: TipoVoce.nonConformita,
+                voci: voci.nonConformita,
+                valore: nonConformita,
+                onScelta: onNonConformita,
+                onCrea: onCreaVoce,
+                onElimina: onEliminaVoce,
+              ),
+            ],
+          ],
+        ],
         const SizedBox(height: 20),
         const _TitoloPasso(numero: 2, testo: 'Acquisisci dal vivo'),
         const SizedBox(height: 10),
@@ -207,7 +351,7 @@ class _CertificaTab extends StatelessWidget {
           titolo: 'Scatta foto',
           sottotitolo: 'Foto dal vivo, certificata con posizione GPS',
           primario: true,
-          attenuato: conformita == null,
+          attenuato: !segnalazioneCompleta,
           onTap: limiteRaggiunto ? null : () => onAcquisisci(ModalitaAcquisizione.foto),
         ),
         const SizedBox(height: 12),
@@ -215,7 +359,7 @@ class _CertificaTab extends StatelessWidget {
           icona: Icons.videocam,
           titolo: 'Registra video',
           sottotitolo: u == null ? 'Video dal vivo con audio' : 'Video dal vivo con audio, fino a ${u.maxUploadMb} MB',
-          attenuato: conformita == null,
+          attenuato: !segnalazioneCompleta,
           onTap: limiteRaggiunto ? null : () => onAcquisisci(ModalitaAcquisizione.video),
         ),
         const SizedBox(height: 20),

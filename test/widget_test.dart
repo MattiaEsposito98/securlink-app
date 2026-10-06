@@ -63,6 +63,30 @@ void main() {
     });
   });
 
+  group('area and non-conformity', () {
+    test('lists are read from the server and updated per type', () {
+      final elenchi = ElenchiVoci.fromJson({'area': ['Magazzino', 'Ponte'], 'non_conformita': ['Parapetto mancante']});
+      expect(elenchi.di(TipoVoce.area), ['Magazzino', 'Ponte']);
+      expect(elenchi.di(TipoVoce.nonConformita), ['Parapetto mancante']);
+
+      final aggiornati = elenchi.con(TipoVoce.area, ['Magazzino', 'Ponte', 'Tetto']);
+      expect(aggiornati.aree, hasLength(3));
+      expect(aggiornati.nonConformita, ['Parapetto mancante']);
+      expect(const ElenchiVoci().aree, isEmpty);
+    });
+
+    test('evidence carries area and non-conformity, empty for old ones', () {
+      final nuova = Evidenza.fromJson({
+        'id': 1, 'esito_conformita': 'non_conforme', 'area': 'Magazzino', 'non_conformita': 'Parapetto mancante',
+      });
+      expect(nuova.area, 'Magazzino');
+      expect(nuova.nonConformita, 'Parapetto mancante');
+      final vecchia = Evidenza.fromJson({'id': 2});
+      expect(vecchia.area, isEmpty);
+      expect(vecchia.nonConformita, isEmpty);
+    });
+  });
+
   test('nomeDaContentDisposition extracts a safe file name', () {
     expect(nomeDaContentDisposition('attachment; filename="EV-2026-000123.pdf"'), 'EV-2026-000123.pdf');
     expect(nomeDaContentDisposition('attachment; filename="a b/c.zip"'), 'a_b_c.zip');

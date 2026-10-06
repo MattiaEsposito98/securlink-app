@@ -256,6 +256,15 @@ class _RigaEvidenza extends StatelessWidget {
                         if (e.conformita != null) BadgeConformita(conformita: e.conformita!),
                       ],
                     ),
+                    if (e.area.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        [e.area, if (e.nonConformita.isNotEmpty) e.nonConformita].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Color(0xFF334155), fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
                     if (e.descrizione.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
