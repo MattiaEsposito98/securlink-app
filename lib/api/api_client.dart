@@ -22,41 +22,39 @@ class SessioneScadutaException extends ApiException {
   SessioneScadutaException() : super('Sessione scaduta: effettua di nuovo l\'accesso.');
 }
 
-/// Client for the Securlink REST API.
+/// Client for the Securlink 2.0 REST API (`/api/v1/preposto/*`).
 ///
-/// Login uses the site's jwt-auth plugin: `POST /token` with credentials
-/// returns a 1-day access token plus a 30-day `refresh_token` cookie. When
-/// the access token expires, `POST /token` with that cookie issues a new one
-/// without asking for the password again.
+/// Login: `POST /preposto/accesso` with email and password returns a Sanctum
+/// token, sent as `Authorization: Bearer`. The token does not expire by time:
+/// it stops working when the password is changed (from this app too: the
+/// response carries the new token) or when the account is blocked. In that
+/// case the server answers 401 and the user logs in again.
 class SecurlinkApi {
   SecurlinkApi({FlutterSecureStorage? storage, http.Client? client})
       : _storage = storage ?? const FlutterSecureStorage(),
         _http = client ?? http.Client();
 
   static const _kToken = 'access_token';
-  static const _kRefresh = 'refresh_token';
   static const _kUtente = 'utente';
-  // jwt-auth keeps one refresh token per "device": this app uses its own slot,
-  // so logging in here never invalidates other sessions of the same user.
-  static const _device = 'securlink-preposto-app';
   static const _timeoutBreve = Duration(seconds: 30);
   static const _timeoutLungo = Duration(minutes: 3);
+  static const _base = '/api/v1/preposto';
 
   final FlutterSecureStorage _storage;
   final http.Client _http;
 
   String? _token;
-  String? _refresh;
   String _userAgent = 'SecurlinkPreposto/$kAppVersion';
+  String _dispositivo = 'app';
 
   void Function()? onSessioneScaduta;
 
-  bool get haSessione => _token != null || _refresh != null;
+  bool get haSessione => _token != null;
 
   Future<void> init() async {
     _token = await _storage.read(key: _kToken);
-    _refresh = await _storage.read(key: _kRefresh);
     _userAgent = await _costruisciUserAgent();
+    _dispositivo = _userAgent.length > 100 ? _userAgent.substring(0, 100) : _userAgent;
   }
 
   Future<Utente?> utenteSalvato() async {
@@ -66,102 +64,84 @@ class SecurlinkApi {
 
   // ------------------------------------------------------------------ auth
 
-  Future<void> login(String username, String password) async {
+  Future<void> login(String email, String password) async {
     final res = await _esegui(() => _http.post(
-          _uri('/wp-json/jwt-auth/v1/token'),
-          headers: _headersBase(),
-          body: {'username': username, 'password': password, 'device': _device},
+          _uri('$_base/accesso'),
+          headers: _headersJson(),
+          body: jsonEncode({'email': email.trim(), 'password': password, 'dispositivo': _dispositivo}),
         ));
     final json = _decodifica(res);
     final token = tokenDaRisposta(json);
-    if (res.statusCode != 200 || json['success'] != true || token == null) {
+    if (res.statusCode != 200 || token == null) {
       throw ApiException(messaggioLoginFallito(json));
     }
     _token = token;
-    _refresh = estraiRefreshToken(res.headers['set-cookie']) ?? _refresh;
     await _salvaToken();
   }
 
   Future<void> logout() async {
+    final token = _token;
     _token = null;
-    _refresh = null;
     await _storage.deleteAll();
-  }
-
-  /// Extends the 30-day refresh token while the app is in use.
-  Future<void> ruotaRefreshToken() async {
-    if (_refresh == null) return;
+    if (token == null) return;
+    // Best effort: the server revokes this device's token.
     try {
-      final res = await _http
-          .post(_uri('/wp-json/jwt-auth/v1/token/refresh'),
-              headers: {..._headersBase(), 'Cookie': 'refresh_token=$_refresh'}, body: {'device': _device})
-          .timeout(_timeoutBreve);
-      final nuovo = estraiRefreshToken(res.headers['set-cookie']);
-      if (res.statusCode == 200 && nuovo != null) {
-        _refresh = nuovo;
-        await _salvaToken();
-      }
+      await _http
+          .post(_uri('$_base/uscita'), headers: {..._headersBase(), 'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 10));
     } on Exception {
-      // Best effort: the current refresh token stays valid until it expires.
+      // Offline: the token stays valid on the server until the next password change.
     }
-  }
-
-  Future<bool> _rinnovaToken() async {
-    if (_refresh == null) return false;
-    final res = await _esegui(() => _http.post(
-          _uri('/wp-json/jwt-auth/v1/token'),
-          headers: {..._headersBase(), 'Cookie': 'refresh_token=$_refresh'},
-          body: {'device': _device},
-        ));
-    final token = tokenDaRisposta(_decodifica(res));
-    if (res.statusCode != 200 || token == null) return false;
-    _token = token;
-    await _salvaToken();
-    return true;
   }
 
   // ------------------------------------------------------------ endpoints
 
   Future<Utente> me() async {
-    final json = await _getJson('/wp-json/securlink/v1/preposto/me');
+    final json = _dati(await _getJson('$_base/me'));
     await _storage.write(key: _kUtente, value: jsonEncode(json));
     return Utente.fromJson(json);
   }
 
+  /// Changes the password. The server revokes every token (other devices must
+  /// log in again) and returns a new one for this device.
   Future<void> cambiaPassword({required String attuale, required String nuova}) async {
     final res = await _autenticata((headers) => _http.post(
-          _uri('/wp-json/securlink/v1/preposto/password'),
+          _uri('$_base/password'),
           headers: headers,
-          body: {'password_attuale': attuale, 'nuova_password': nuova},
+          body: jsonEncode({'password_attuale': attuale, 'nuova_password': nuova}),
         ));
-    _verificaOk(res);
+    final nuovoToken = _jsonOk(res)['token'];
+    if (nuovoToken is String && nuovoToken.isNotEmpty) {
+      _token = nuovoToken;
+      await _salvaToken();
+    }
   }
 
   Future<ElenchiVoci> voci() async {
-    return ElenchiVoci.fromJson(await _getJson('/wp-json/securlink/v1/preposto/voci'));
+    return ElenchiVoci.fromJson(_dati(await _getJson('$_base/voci')));
   }
 
   /// Creates an entry (or returns the existing one with the same name) and
   /// the refreshed list.
   Future<({String valore, List<String> voci})> aggiungiVoce(TipoVoce tipo, String valore) async {
     final res = await _autenticata((headers) => _http.post(
-          _uri('/wp-json/securlink/v1/preposto/voci'),
+          _uri('$_base/voci'),
           headers: headers,
-          body: {'tipo': tipo.valoreApi, 'valore': valore},
+          body: jsonEncode({'tipo': tipo.valoreApi, 'valore': valore}),
         ));
-    final json = _jsonOk(res);
-    return (valore: json['valore'] as String, voci: List<String>.from(json['voci'] as List));
+    final dati = _dati(_jsonOk(res));
+    return (valore: (dati['voce'] as Map)['nome'] as String, voci: nomiVoci(dati['voci']));
   }
 
   /// Removes an entry from the family's list (any user of the group can).
   /// Already certified evidences keep their text. Returns the updated list.
   Future<List<String>> eliminaVoce(TipoVoce tipo, String valore) async {
-    final res = await _autenticata((headers) => _http.post(
-          _uri('/wp-json/securlink/v1/preposto/voci/elimina'),
-          headers: headers,
-          body: {'tipo': tipo.valoreApi, 'valore': valore},
-        ));
-    return List<String>.from(_jsonOk(res)['voci'] as List);
+    // The server deletes by id: find the entry by name in the current list.
+    final elenco = _dati(await _getJson('$_base/voci'))[tipo.valoreApi] as List? ?? const [];
+    final voce = elenco.cast<Map>().where((v) => (v['nome'] as String).toLowerCase() == valore.toLowerCase()).firstOrNull;
+    if (voce == null) return nomiVoci(elenco);
+    final res = await _autenticata((headers) => _http.delete(_uri('$_base/voci/${tipo.valoreApi}/${voce['id']}'), headers: headers));
+    return nomiVoci(_dati(_jsonOk(res))['voci']);
   }
 
   Future<EsitoCertificazione> certifica({
@@ -173,37 +153,38 @@ class SecurlinkApi {
     required String descrizione,
   }) async {
     final res = await _autenticata((headers) async {
-      final req = http.MultipartRequest('POST', _uri('/wp-json/securlink/v1/preposto/certifica'))
+      final req = http.MultipartRequest('POST', _uri('$_base/certifica'))
         ..headers.addAll(headers)
         ..fields.addAll({
-          'esito_conformita': segnalazione.conformita.valoreApi,
+          'esito': segnalazione.conformita.valoreApi,
           'area': segnalazione.area,
           if (segnalazione.nonConformita != null) 'non_conformita': segnalazione.nonConformita!,
           'descrizione': descrizione,
           'gps_lat': '$lat',
           'gps_lon': '$lon',
           'gps_accuratezza': '$accuratezza',
+          'dispositivo': _dispositivo,
+          'versione_app': kAppVersion,
         })
         ..files.add(await http.MultipartFile.fromPath('foto', file.path));
       return http.Response.fromStream(await _http.send(req));
     }, timeout: _timeoutLungo);
-    return EsitoCertificazione.fromJson(_jsonOk(res));
+    return EsitoCertificazione.fromJson(_dati(_jsonOk(res)));
   }
 
   Future<PaginaEvidenze> evidenze({String cerca = '', Conformita? conformita, int pagina = 1}) async {
-    final json = await _getJson('/wp-json/securlink/v1/preposto/evidenze', query: {
-      's': cerca,
+    final json = await _getJson('$_base/evidenze', query: {
+      if (cerca.isNotEmpty) 's': cerca,
       if (conformita != null) 'esito': conformita.valoreApi,
       'page': '$pagina',
-      'per_page': '20',
+      'per_pagina': '20',
     });
     return PaginaEvidenze.fromJson(json);
   }
 
   Future<EsitoVerifica> verifica(int evidenzaId) async {
-    final res = await _autenticata((headers) =>
-        _http.post(_uri('/wp-json/securlink/v1/preposto/evidenze/$evidenzaId/verifica'), headers: headers));
-    return EsitoVerifica.fromJson(_jsonOk(res));
+    final res = await _autenticata((headers) => _http.post(_uri('$_base/evidenze/$evidenzaId/verifica'), headers: headers));
+    return EsitoVerifica.fromJson(_dati(_jsonOk(res)));
   }
 
   /// Original photo/video, cached: it never changes once certified.
@@ -212,7 +193,7 @@ class SecurlinkApi {
     final file = File('${dir.path}/originali/${evidenza.id}-${nomeFileSicuro(evidenza.nomeFile)}');
     if (await file.exists()) return file;
     final res = await _autenticata(
-      (headers) => _http.get(_uri('/wp-json/securlink/v1/preposto/evidenze/${evidenza.id}/file'), headers: headers),
+      (headers) => _http.get(_uri('$_base/evidenze/${evidenza.id}/file', {'inline': '1'}), headers: headers),
       timeout: _timeoutLungo,
     );
     _verificaOk(res);
@@ -223,7 +204,7 @@ class SecurlinkApi {
   Future<File> esporta(Evidenza evidenza, FormatoReport formato) async {
     final res = await _autenticata(
       (headers) => _http.get(
-        _uri('/wp-json/securlink/v1/preposto/evidenze/${evidenza.id}/export/${formato.name}'),
+        _uri('$_base/evidenze/${evidenza.id}/export/${formato.name}'),
         headers: headers,
       ),
       timeout: _timeoutLungo,
@@ -243,6 +224,8 @@ class SecurlinkApi {
 
   Map<String, String> _headersBase() => {'Accept': 'application/json', 'User-Agent': _userAgent};
 
+  Map<String, String> _headersJson() => {..._headersBase(), 'Content-Type': 'application/json'};
+
   Future<Map<String, dynamic>> _getJson(String path, {Map<String, String>? query}) async {
     final res = await _autenticata((headers) => _http.get(_uri(path, query), headers: headers));
     return _jsonOk(res);
@@ -252,25 +235,13 @@ class SecurlinkApi {
     Future<http.Response> Function(Map<String, String> headers) richiesta, {
     Duration timeout = _timeoutBreve,
   }) async {
-    Map<String, String> headers() => {..._headersBase(), if (_token != null) 'Authorization': 'Bearer $_token'};
-
-    if (_token == null && !await _rinnovaToken()) throw _sessioneScaduta();
-    var res = await _esegui(() => richiesta(headers()), timeout: timeout);
-    if (_tokenNonValido(res)) {
-      if (!await _rinnovaToken()) throw _sessioneScaduta();
-      res = await _esegui(() => richiesta(headers()), timeout: timeout);
-      if (_tokenNonValido(res)) throw _sessioneScaduta();
-    }
+    if (_token == null) throw _sessioneScaduta();
+    // JSON for the calls that send a body; the multipart request sets its own Content-Type.
+    final res = await _esegui(() => richiesta({..._headersJson(), 'Authorization': 'Bearer $_token'}), timeout: timeout);
+    // 401 = token revoked (password changed elsewhere, account blocked). A 403 is final
+    // and carries its own message (e.g. «funzionalità non attiva»): it is not a logout.
+    if (res.statusCode == 401) throw _sessioneScaduta();
     return res;
-  }
-
-  bool _tokenNonValido(http.Response res) {
-    if (res.statusCode == 401) return true;
-    if (res.statusCode != 403) return false;
-    // A 403 from our own endpoints ("riservata ai preposti") is final; only
-    // jwt-auth's 403s mean the token itself is invalid or expired.
-    final codice = _decodifica(res)['code'];
-    return codice is String && codice.startsWith('jwt_auth');
   }
 
   SessioneScadutaException _sessioneScaduta() {
@@ -308,21 +279,32 @@ class SecurlinkApi {
 
   void _verificaOk(http.Response res) {
     if (res.statusCode >= 200 && res.statusCode < 300) return;
-    // 5xx bodies are WordPress's generic HTML "critical error" page: useless to the user.
+    // 5xx bodies are not meant for the user.
     if (res.statusCode >= 500) {
       throw ApiException('Errore interno del server (${res.statusCode}). Riprova tra poco; se si ripete contatta Securlav.');
     }
     throw ApiException(_messaggio(_decodifica(res)) ?? 'Errore del server (${res.statusCode}).');
   }
 
+  /// Laravel validation errors come as `errors: {field: [message]}`; otherwise `message`.
   String? _messaggio(Map<String, dynamic> json) {
+    final errori = json['errors'];
+    if (errori is Map && errori.isNotEmpty) {
+      final primo = errori.values.first;
+      if (primo is List && primo.isNotEmpty && primo.first is String) return primo.first as String;
+    }
     final msg = json['message'];
     return msg is String && msg.isNotEmpty ? msg : null;
   }
 
+  /// Responses wrap the payload in `data`.
+  Map<String, dynamic> _dati(Map<String, dynamic> json) {
+    final dati = json['data'];
+    return dati is Map<String, dynamic> ? dati : json;
+  }
+
   Future<void> _salvaToken() async {
     if (_token != null) await _storage.write(key: _kToken, value: _token);
-    if (_refresh != null) await _storage.write(key: _kRefresh, value: _refresh);
   }
 
   /// Ends up in the evidence report as "user agent" of the capture device.
@@ -344,28 +326,21 @@ class SecurlinkApi {
   }
 }
 
-/// jwt-auth sends `data` as an object on success but as an empty list on errors.
+/// Login response: `{data: {token, utente}}`.
 String? tokenDaRisposta(Map<String, dynamic> json) {
   final data = json['data'];
   return data is Map ? data['token'] as String? : null;
 }
 
 String messaggioLoginFallito(Map<String, dynamic> json) {
-  const credenzialiErrate = {'incorrect_password', 'invalid_username', 'invalid_email', 'empty_username', 'empty_password'};
-  if (credenzialiErrate.contains(json['code'])) return 'Nome utente o password non corretti.';
-  final msg = json['message'];
-  if (msg is String && msg.isNotEmpty) {
-    // WordPress messages may carry HTML (links, <strong>) and an "ERRORE:" prefix.
-    return msg.replaceAll(RegExp(r'<[^>]*>'), '').replaceFirst(RegExp(r'^\s*ERRORE:\s*', caseSensitive: false), '').trim();
+  final errori = json['errors'];
+  if (errori is Map && errori.isNotEmpty) {
+    final primo = errori.values.first;
+    if (primo is List && primo.isNotEmpty && primo.first is String) return primo.first as String;
   }
+  final msg = json['message'];
+  if (msg is String && msg.isNotEmpty) return msg.replaceAll(RegExp(r'<[^>]*>'), '').trim();
   return 'Accesso non riuscito.';
-}
-
-String? estraiRefreshToken(String? setCookie) {
-  if (setCookie == null) return null;
-  final match = RegExp(r'refresh_token=([^;,\s]+)').firstMatch(setCookie);
-  final valore = match?.group(1);
-  return valore == null || valore == 'deleted' ? null : Uri.decodeComponent(valore);
 }
 
 String? nomeDaContentDisposition(String? header) {

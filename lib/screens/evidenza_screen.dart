@@ -147,13 +147,16 @@ class _EvidenzaScreenState extends State<EvidenzaScreen> {
                     tipo: _verifica!.integra ? TipoMessaggio.ok : TipoMessaggio.errore,
                     testo: _verifica!.integra
                         ? 'Integra — il file non è stato modificato.'
-                        : 'ATTENZIONE — l\'impronta non corrisponde: il file risulta modificato.',
+                        : _verifica!.hashAttuale.isEmpty
+                            ? 'File originale non trovato: impossibile verificare.'
+                            : 'ATTENZIONE — l\'impronta non corrisponde: il file risulta modificato.',
                   ),
                   const SizedBox(height: 8),
-                  SelectableText(
-                    'SHA-256: ${_verifica!.hashAttuale}',
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF64748B)),
-                  ),
+                  if (_verifica!.hashAttuale.isNotEmpty)
+                    SelectableText(
+                      'SHA-256: ${_verifica!.hashAttuale}',
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF64748B)),
+                    ),
                   const SizedBox(height: 12),
                 ],
                 if (_erroreVerifica != null) ...[

@@ -81,7 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         autocorrect: false,
-                        decoration: const InputDecoration(labelText: 'Nome utente o email', prefixIcon: Icon(Icons.person_outline)),
+                        decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.person_outline)),
                         validator: (v) => (v == null || v.trim().isEmpty) ? 'Inserisci il nome utente' : null,
                       ),
                       const SizedBox(height: 14),

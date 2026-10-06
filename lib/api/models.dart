@@ -103,7 +103,7 @@ class Evidenza {
     descrizione:
         json['descrizione'] as String? ?? json['nota'] as String? ?? '',
     mime: json['mime'] as String? ?? '',
-    conformita: Conformita.daApi(json['esito_conformita'] as String?),
+    conformita: Conformita.daApi(json['esito'] as String?),
     area: json['area'] as String? ?? '',
     nonConformita: json['non_conformita'] as String? ?? '',
   );
@@ -163,10 +163,8 @@ class ElenchiVoci {
   const ElenchiVoci({this.aree = const [], this.nonConformita = const []});
 
   factory ElenchiVoci.fromJson(Map<String, dynamic> json) => ElenchiVoci(
-    aree: List<String>.from(json['area'] as List? ?? const []),
-    nonConformita: List<String>.from(
-      json['non_conformita'] as List? ?? const [],
-    ),
+    aree: nomiVoci(json['area']),
+    nonConformita: nomiVoci(json['non_conformita']),
   );
 
   final List<String> aree;
@@ -203,12 +201,12 @@ class PaginaEvidenze {
   });
 
   factory PaginaEvidenze.fromJson(Map<String, dynamic> json) => PaginaEvidenze(
-    evidenze: (json['evidenze'] as List)
+    evidenze: (json['data'] as List)
         .map((e) => Evidenza.fromJson(e as Map<String, dynamic>))
         .toList(),
-    totale: json['totale'] as int,
-    pagina: json['pagina'] as int,
-    pagine: json['pagine'] as int,
+    totale: (json['meta'] as Map)['totale'] as int,
+    pagina: (json['meta'] as Map)['pagina'] as int,
+    pagine: (json['meta'] as Map)['pagine'] as int,
   );
 
   final List<Evidenza> evidenze;
@@ -222,7 +220,7 @@ class EsitoCertificazione {
 
   factory EsitoCertificazione.fromJson(Map<String, dynamic> json) =>
       EsitoCertificazione(
-        codice: json['codice_evidenza'] as String? ?? '',
+        codice: json['codice'] as String? ?? '',
         ambiente: json['ambiente'] as String? ?? '',
       );
 
@@ -238,9 +236,10 @@ class EsitoVerifica {
   });
 
   factory EsitoVerifica.fromJson(Map<String, dynamic> json) => EsitoVerifica(
-    integra: json['integra'] as bool,
-    hashSalvato: json['hash_salvato'] as String? ?? '',
-    hashAttuale: json['hash_attuale'] as String? ?? '',
+    // The server also checks the marked manifest against the hash.
+    integra: (json['integro'] as bool? ?? false) && (json['manifest_coerente'] as bool? ?? false),
+    hashSalvato: json['hash_certificato'] as String? ?? '',
+    hashAttuale: json['hash_calcolato'] as String? ?? '',
   );
 
   final bool integra;
@@ -258,3 +257,7 @@ enum FormatoReport {
   final String etichetta;
   final String descrizione;
 }
+
+/// Names of a list of `{id, nome}` entries.
+List<String> nomiVoci(Object? voci) =>
+    (voci as List? ?? const []).map((v) => (v as Map)['nome'] as String).toList();

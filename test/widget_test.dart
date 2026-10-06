@@ -5,39 +5,24 @@ import 'package:securlink/config.dart';
 import 'package:securlink/utils.dart';
 
 void main() {
-  group('estraiRefreshToken', () {
-    test('reads the jwt-auth refresh cookie among others', () {
-      const header = 'wordfence_verifiedHuman=abc; path=/, '
-          'refresh_token=42.9f86d081884c7d65; expires=Wed, 28-Oct-2026 10:00:00 GMT; path=/; secure; HttpOnly';
-      expect(estraiRefreshToken(header), '42.9f86d081884c7d65');
-    });
-
-    test('ignores missing or deleted cookies', () {
-      expect(estraiRefreshToken(null), isNull);
-      expect(estraiRefreshToken('other=1; path=/'), isNull);
-      expect(estraiRefreshToken('refresh_token=deleted; expires=Thu, 01-Jan-1970 00:00:01 GMT'), isNull);
-    });
-  });
-
   group('login response', () {
-    test('reads the token only when data is an object', () {
-      expect(tokenDaRisposta({'success': true, 'data': {'token': 'abc'}}), 'abc');
-      expect(tokenDaRisposta({'success': false, 'data': []}), isNull);
+    test('reads the token from data', () {
+      expect(tokenDaRisposta({'data': {'token': '12|abc', 'utente': {}}}), '12|abc');
+      expect(tokenDaRisposta({'message': 'Errore'}), isNull);
+      expect(tokenDaRisposta({'data': []}), isNull);
     });
 
-    test('wrong credentials give a clean Italian message', () {
+    test('Laravel validation errors show the first message', () {
       final json = {
-        'success': false,
-        'code': 'incorrect_password',
-        'message': 'ERRORE: Nome Utente Password non corretti. Recupera Password',
-        'data': [],
+        'message': 'Email o password non corretti.',
+        'errors': {'email': ['Email o password non corretti.']},
       };
-      expect(messaggioLoginFallito(json), 'Nome utente o password non corretti.');
+      expect(messaggioLoginFallito(json), 'Email o password non corretti.');
     });
 
-    test('other server messages are shown without HTML or prefix', () {
-      final json = {'code': 'too_many_attempts', 'message': '<strong>ERRORE:</strong> Troppi tentativi, riprova più tardi.'};
-      expect(messaggioLoginFallito(json), 'Troppi tentativi, riprova più tardi.');
+    test('other server messages are shown without HTML', () {
+      expect(messaggioLoginFallito({'message': '<b>Troppi tentativi</b>, riprova più tardi.'}), 'Troppi tentativi, riprova più tardi.');
+      expect(messaggioLoginFallito({}), 'Accesso non riuscito.');
     });
   });
 
@@ -52,12 +37,12 @@ void main() {
     test('evidence reads the new description and falls back to the old note', () {
       final nuova = Evidenza.fromJson({
         'id': 7, 'codice': 'EV-1', 'descrizione': 'Ponteggio ok', 'nota': 'Ponteggio ok',
-        'esito_conformita': 'conforme',
+        'esito': 'conforme',
       });
       expect(nuova.descrizione, 'Ponteggio ok');
       expect(nuova.conformita, Conformita.conforme);
 
-      final vecchia = Evidenza.fromJson({'id': 8, 'nota': 'Foto', 'esito_conformita': ''});
+      final vecchia = Evidenza.fromJson({'id': 8, 'nota': 'Foto', 'esito': ''});
       expect(vecchia.descrizione, 'Foto');
       expect(vecchia.conformita, isNull);
     });
@@ -65,7 +50,10 @@ void main() {
 
   group('area and non-conformity', () {
     test('lists are read from the server and updated per type', () {
-      final elenchi = ElenchiVoci.fromJson({'area': ['Magazzino', 'Ponte'], 'non_conformita': ['Parapetto mancante']});
+      final elenchi = ElenchiVoci.fromJson({
+        'area': [{'id': 1, 'nome': 'Magazzino'}, {'id': 2, 'nome': 'Ponte'}],
+        'non_conformita': [{'id': 3, 'nome': 'Parapetto mancante'}],
+      });
       expect(elenchi.di(TipoVoce.area), ['Magazzino', 'Ponte']);
       expect(elenchi.di(TipoVoce.nonConformita), ['Parapetto mancante']);
 
@@ -77,13 +65,40 @@ void main() {
 
     test('evidence carries area and non-conformity, empty for old ones', () {
       final nuova = Evidenza.fromJson({
-        'id': 1, 'esito_conformita': 'non_conforme', 'area': 'Magazzino', 'non_conformita': 'Parapetto mancante',
+        'id': 1, 'esito': 'non_conforme', 'area': 'Magazzino', 'non_conformita': 'Parapetto mancante',
       });
       expect(nuova.area, 'Magazzino');
       expect(nuova.nonConformita, 'Parapetto mancante');
       final vecchia = Evidenza.fromJson({'id': 2});
       expect(vecchia.area, isEmpty);
       expect(vecchia.nonConformita, isEmpty);
+    });
+  });
+
+  group('server 2.0 responses', () {
+    test('evidence page reads data and meta', () {
+      final pagina = PaginaEvidenze.fromJson({
+        'data': [{'id': 1, 'codice': 'EV-2026-000001', 'esito': 'conforme', 'mime': 'image/jpeg'}],
+        'meta': {'totale': 41, 'pagina': 2, 'pagine': 3},
+      });
+      expect(pagina.evidenze.single.codice, 'EV-2026-000001');
+      expect((pagina.totale, pagina.pagina, pagina.pagine), (41, 2, 3));
+    });
+
+    test('verification is intact only if the hash and the marked manifest agree', () {
+      final integra = EsitoVerifica.fromJson({'integro': true, 'manifest_coerente': true, 'hash_certificato': 'a', 'hash_calcolato': 'a'});
+      expect(integra.integra, isTrue);
+      final manomessa = EsitoVerifica.fromJson({'integro': false, 'manifest_coerente': true, 'hash_certificato': 'a', 'hash_calcolato': 'b'});
+      expect(manomessa.integra, isFalse);
+      final senzaFile = EsitoVerifica.fromJson({'integro': false, 'manifest_coerente': true, 'hash_certificato': 'a', 'hash_calcolato': null});
+      expect((senzaFile.integra, senzaFile.hashAttuale), (false, ''));
+    });
+
+    test('certification outcome and voci names', () {
+      final esito = EsitoCertificazione.fromJson({'codice': 'EV-2026-000009', 'ambiente': 'sandbox'});
+      expect((esito.codice, esito.ambiente), ('EV-2026-000009', 'sandbox'));
+      expect(nomiVoci([{'id': 1, 'nome': 'A'}, {'id': 2, 'nome': 'B'}]), ['A', 'B']);
+      expect(nomiVoci(null), isEmpty);
     });
   });
 

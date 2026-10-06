@@ -36,7 +36,6 @@ class Sessione extends ChangeNotifier {
       _utente = await api.utenteSalvato();
       _stato = StatoSessione.autenticato;
       aggiornaUtente();
-      api.ruotaRefreshToken();
     }
     notifyListeners();
   }
