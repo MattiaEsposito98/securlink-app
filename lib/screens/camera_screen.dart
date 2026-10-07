@@ -16,7 +16,11 @@ enum ModalitaAcquisizione { foto, video }
 
 /// Live capture only: there is deliberately no way to pick an existing file.
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key, required this.modalita, required this.segnalazione});
+  const CameraScreen({
+    super.key,
+    required this.modalita,
+    required this.segnalazione,
+  });
 
   final ModalitaAcquisizione modalita;
   final Segnalazione segnalazione;
@@ -25,7 +29,8 @@ class CameraScreen extends StatefulWidget {
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver {
+class _CameraScreenState extends State<CameraScreen>
+    with WidgetsBindingObserver {
   List<CameraDescription> _camere = [];
   int _indice = 0;
   CameraController? _controller;
@@ -49,7 +54,8 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _maxBytes = SessioneScope.read(context).utente?.maxUploadBytes ?? 10 * 1024 * 1024;
+    _maxBytes =
+        SessioneScope.read(context).utente?.maxUploadBytes ?? 10 * 1024 * 1024;
     _durataMax = durataMassimaVideo(_maxBytes, kVideoBitrate, kAudioBitrate);
     _avvia();
   }
@@ -64,7 +70,8 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
       final c = _controller;
       // Not initialised yet means a permission prompt is on screen: leave it be.
       if (c == null || !c.value.isInitialized) return;
@@ -75,7 +82,10 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       });
       c.dispose();
     } else if (state == AppLifecycleState.resumed) {
-      if (_controller == null && !_inizializzando && !_inRevisione && _camere.isNotEmpty) {
+      if (_controller == null &&
+          !_inizializzando &&
+          !_inRevisione &&
+          _camere.isNotEmpty) {
         _inizializza();
       }
     }
@@ -88,10 +98,14 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
       _camere = [];
     }
     if (_camere.isEmpty) {
-      setState(() => _errore = 'Nessuna fotocamera disponibile su questo dispositivo.');
+      setState(
+        () => _errore = 'Nessuna fotocamera disponibile su questo dispositivo.',
+      );
       return;
     }
-    final posteriore = _camere.indexWhere((c) => c.lensDirection == CameraLensDirection.back);
+    final posteriore = _camere.indexWhere(
+      (c) => c.lensDirection == CameraLensDirection.back,
+    );
     _indice = posteriore >= 0 ? posteriore : 0;
     await _inizializza();
   }
@@ -128,12 +142,15 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
         // Like the web dashboard: without the microphone, record video only.
         _senzaAudio = true;
         _inizializzando = false;
-        _snack('Microfono non consentito: il video verrà registrato senza audio.');
+        _snack(
+          'Microfono non consentito: il video verrà registrato senza audio.',
+        );
         return _inizializza();
       }
       if (mounted) {
         setState(() {
-          _erroreImpostazioni = e.code.contains('Denied') || e.code.contains('Restricted');
+          _erroreImpostazioni =
+              e.code.contains('Denied') || e.code.contains('Restricted');
           _errore = _erroreImpostazioni
               ? 'Accesso alla fotocamera negato. Per certificare serve uno scatto dal vivo: consenti la fotocamera nelle impostazioni dell\'app.'
               : 'Impossibile avviare la fotocamera (${e.description ?? e.code}).';
@@ -211,12 +228,16 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     });
     try {
       final video = await c.stopVideoRecording();
-      final estensione = video.path.contains('.') ? video.path.split('.').last.toLowerCase() : 'mp4';
+      final estensione = video.path.contains('.')
+          ? video.path.split('.').last.toLowerCase()
+          : 'mp4';
       final file = await _salvaAcquisizione(video, estensione);
       final dimensione = await file.length();
       if (dimensione > _maxBytes) {
         await file.delete();
-        _snack('Il video è troppo grande (${formattaMb(dimensione)}, limite ${formattaMb(_maxBytes)}): registrane uno più breve.');
+        _snack(
+          'Il video è troppo grande (${formattaMb(dimensione)}, limite ${formattaMb(_maxBytes)}): registrane uno più breve.',
+        );
         return;
       }
       await _revisione(file, isVideo: true);
@@ -229,7 +250,8 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 
   Future<File> _salvaAcquisizione(XFile acquisito, String estensione) async {
     final dir = await getTemporaryDirectory();
-    final destinazione = '${dir.path}/${nomeEvidenza(DateTime.now(), estensione)}';
+    final destinazione =
+        '${dir.path}/${nomeEvidenza(DateTime.now(), estensione)}';
     await acquisito.saveTo(destinazione);
     try {
       await File(acquisito.path).delete();
@@ -245,7 +267,11 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
     if (!mounted) return;
     final certificata = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => ReviewScreen(file: file, isVideo: isVideo, segnalazione: widget.segnalazione),
+        builder: (_) => ReviewScreen(
+          file: file,
+          isVideo: isVideo,
+          segnalazione: widget.segnalazione,
+        ),
       ),
     );
     _inRevisione = false;
@@ -307,17 +333,32 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             children: [
-              _PulsanteTondo(icona: Icons.close, tooltip: 'Chiudi', onPressed: () => Navigator.of(context).pop()),
+              _PulsanteTondo(
+                icona: Icons.close,
+                tooltip: 'Chiudi',
+                onPressed: () => Navigator.of(context).pop(),
+              ),
               const Spacer(),
               if (_registrando)
                 _IndicatoreRec(trascorso: _trascorso, massimo: _durataMax)
               else
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(99)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
                   child: Text(
                     '${_isVideo ? 'VIDEO' : 'FOTO'} · ${widget.segnalazione.conformita.etichetta.toUpperCase()}',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, letterSpacing: .8, fontSize: 13),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: .8,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               const Spacer(),
@@ -336,7 +377,9 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   Widget _barraInferiore(CameraController? c) {
     final pronto = c != null && c.value.isInitialized && !_occupato;
     final suggerimento = _isVideo
-        ? (_registrando ? 'Tocca per fermare' : 'Tocca per registrare · max ${formattaDurata(_durataMax)}')
+        ? (_registrando
+              ? 'Tocca per fermare'
+              : 'Tocca per registrare · max ${formattaDurata(_durataMax)}')
         : 'Tocca per scattare';
     return Positioned(
       left: 0,
@@ -357,7 +400,10 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(suggerimento, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                Text(
+                  suggerimento,
+                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                ),
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -368,8 +414,8 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
                       onTap: !pronto && !_registrando
                           ? null
                           : _isVideo
-                              ? (_registrando ? _fermaVideo : _avviaVideo)
-                              : _scatta,
+                          ? (_registrando ? _fermaVideo : _avviaVideo)
+                          : _scatta,
                     ),
                     Expanded(
                       child: Align(
@@ -395,7 +441,11 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
 }
 
 class _Otturatore extends StatelessWidget {
-  const _Otturatore({required this.video, required this.registrando, required this.onTap});
+  const _Otturatore({
+    required this.video,
+    required this.registrando,
+    required this.onTap,
+  });
 
   final bool video;
   final bool registrando;
@@ -405,7 +455,9 @@ class _Otturatore extends StatelessWidget {
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
-      label: video ? (registrando ? 'Ferma registrazione' : 'Avvia registrazione') : 'Scatta foto',
+      label: video
+          ? (registrando ? 'Ferma registrazione' : 'Avvia registrazione')
+          : 'Scatta foto',
       child: GestureDetector(
         onTap: onTap,
         child: Opacity(
@@ -414,7 +466,10 @@ class _Otturatore extends StatelessWidget {
             width: 78,
             height: 78,
             padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4)),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 4),
+            ),
             child: Center(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
@@ -443,7 +498,10 @@ class _IndicatoreRec extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(color: const Color(0xEEB91C1C), borderRadius: BorderRadius.circular(99)),
+      decoration: BoxDecoration(
+        color: const Color(0xEEB91C1C),
+        borderRadius: BorderRadius.circular(99),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -451,7 +509,11 @@ class _IndicatoreRec extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             'REC ${formattaDurata(trascorso)} / ${formattaDurata(massimo)}',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()]),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontFeatures: [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),
@@ -460,7 +522,11 @@ class _IndicatoreRec extends StatelessWidget {
 }
 
 class _PulsanteTondo extends StatelessWidget {
-  const _PulsanteTondo({required this.icona, required this.tooltip, required this.onPressed});
+  const _PulsanteTondo({
+    required this.icona,
+    required this.tooltip,
+    required this.onPressed,
+  });
 
   final IconData icona;
   final String tooltip;
@@ -475,13 +541,20 @@ class _PulsanteTondo extends StatelessWidget {
       color: Colors.white,
       disabledColor: Colors.white38,
       iconSize: 26,
-      style: IconButton.styleFrom(backgroundColor: Colors.black45, fixedSize: const Size(48, 48)),
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.black45,
+        fixedSize: const Size(48, 48),
+      ),
     );
   }
 }
 
 class _ErroreCamera extends StatelessWidget {
-  const _ErroreCamera({required this.testo, required this.impostazioni, required this.onRiprova});
+  const _ErroreCamera({
+    required this.testo,
+    required this.impostazioni,
+    required this.onRiprova,
+  });
 
   final String testo;
   final bool impostazioni;
@@ -495,19 +568,33 @@ class _ErroreCamera extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.no_photography_outlined, color: Colors.white70, size: 56),
+            const Icon(
+              Icons.no_photography_outlined,
+              color: Colors.white70,
+              size: 56,
+            ),
             const SizedBox(height: 16),
-            Text(testo, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, height: 1.4)),
+            Text(
+              testo,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, height: 1.4),
+            ),
             const SizedBox(height: 24),
             if (impostazioni)
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: kBrand),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: kBrand,
+                ),
                 onPressed: Geolocator.openAppSettings,
                 child: const Text('Apri impostazioni'),
               ),
             TextButton(
               onPressed: onRiprova,
-              child: const Text('Riprova', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Riprova',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),

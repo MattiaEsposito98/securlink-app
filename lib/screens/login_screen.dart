@@ -42,7 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
       _errore = null;
     });
     try {
-      await SessioneScope.read(context).login(_utente.text.trim(), _password.text);
+      await SessioneScope.read(context)
+          .login(_utente.text.trim(), _password.text);
     } on ApiException catch (e) {
       if (mounted) setState(() => _errore = e.message);
     } finally {
@@ -66,23 +67,37 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Image.asset('assets/logo_verticale.png', height: 150, semanticLabel: 'Securlink by Securlav'),
+                      Image.asset(
+                        'assets/logo_verticale.png',
+                        height: 150,
+                        semanticLabel: 'Securlink by Securlav',
+                      ),
                       const SizedBox(height: 20),
                       Text(
                         'Certificazione di foto e video per i preposti',
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyLarge?.copyWith(color: const Color(0xFF475569)),
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: const Color(0xFF475569),
+                        ),
                       ),
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _utente,
                         enabled: !_inCorso,
-                        autofillHints: const [AutofillHints.username, AutofillHints.email],
+                        autofillHints: const [
+                          AutofillHints.username,
+                          AutofillHints.email,
+                        ],
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         autocorrect: false,
-                        decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.person_outline)),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Inserisci il nome utente' : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Email',
+                          prefixIcon: Icon(Icons.person_outline),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Inserisci il nome utente'
+                            : null,
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
@@ -96,12 +111,22 @@ class _LoginScreenState extends State<LoginScreen> {
                           labelText: 'Password',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            icon: Icon(_mostraPassword ? Icons.visibility_off : Icons.visibility),
-                            tooltip: _mostraPassword ? 'Nascondi password' : 'Mostra password',
-                            onPressed: () => setState(() => _mostraPassword = !_mostraPassword),
+                            icon: Icon(
+                              _mostraPassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            tooltip: _mostraPassword
+                                ? 'Nascondi password'
+                                : 'Mostra password',
+                            onPressed: () => setState(
+                              () => _mostraPassword = !_mostraPassword,
+                            ),
                           ),
                         ),
-                        validator: (v) => (v == null || v.isEmpty) ? 'Inserisci la password' : null,
+                        validator: (v) => (v == null || v.isEmpty)
+                            ? 'Inserisci la password'
+                            : null,
                       ),
                       if (_errore != null) ...[
                         const SizedBox(height: 16),
@@ -111,14 +136,23 @@ class _LoginScreenState extends State<LoginScreen> {
                       FilledButton(
                         onPressed: _inCorso ? null : _accedi,
                         child: _inCorso
-                            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Text('Accedi'),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'Usa le stesse credenziali del sito securlink.securlav.it',
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(color: const Color(0xFF94A3B8)),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF94A3B8),
+                        ),
                       ),
                     ],
                   ),

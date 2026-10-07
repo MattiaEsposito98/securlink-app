@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 
 /// Address of the Securlink 2.0 server. For tests on the dev server:
 /// `flutter run --dart-define=SECURLINK_URL=http://192.168.1.50:5174`
-const String kBaseUrl = String.fromEnvironment('SECURLINK_URL', defaultValue: 'https://securlink.securlav.it');
+const String kBaseUrl = String.fromEnvironment(
+  'SECURLINK_URL',
+  defaultValue: 'https://securlink.securlav.it',
+);
 const String kAppVersion = '1.0.0';
 
 // Securlink logo colours.

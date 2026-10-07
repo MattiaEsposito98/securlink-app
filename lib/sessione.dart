@@ -73,8 +73,11 @@ class Sessione extends ChangeNotifier {
 }
 
 class SessioneScope extends InheritedNotifier<Sessione> {
-  const SessioneScope({super.key, required Sessione sessione, required super.child})
-      : super(notifier: sessione);
+  const SessioneScope({
+    super.key,
+    required Sessione sessione,
+    required super.child,
+  }) : super(notifier: sessione);
 
   static Sessione of(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<SessioneScope>()!.notifier!;

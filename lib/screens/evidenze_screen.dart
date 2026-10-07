@@ -40,7 +40,11 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
     super.initState();
     widget.versione.addListener(_ricarica);
     _scroll.addListener(() {
-      if (_scroll.position.extentAfter < 400 && !_caricando && _pagina < _pagine) _carica(_pagina + 1);
+      if (_scroll.position.extentAfter < 400 &&
+          !_caricando &&
+          _pagina < _pagine) {
+        _carica(_pagina + 1);
+      }
     });
     _ricarica();
   }
@@ -65,9 +69,11 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
       if (pagina == 1) _errore = null;
     });
     try {
-      final risultato = await SessioneScope.read(context)
-          .api
-          .evidenze(cerca: _cerca.text.trim(), conformita: _filtro, pagina: pagina);
+      final risultato = await SessioneScope.read(context).api.evidenze(
+        cerca: _cerca.text.trim(),
+        conformita: _filtro,
+        pagina: pagina,
+      );
       if (!mounted || id != _richiesta) return;
       setState(() {
         if (pagina == 1) _evidenze.clear();
@@ -83,7 +89,8 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
       if (pagina == 1) {
         setState(() => _errore = e.message);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
       }
     } finally {
       if (mounted && id == _richiesta) setState(() => _caricando = false);
@@ -110,7 +117,9 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
               hintText: 'Cerca per codice, file o nota…',
               prefixIcon: const Icon(Icons.search),
               contentPadding: const EdgeInsets.symmetric(vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(999)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(999),
                 borderSide: const BorderSide(color: Color(0xFFD0D7E2)),
@@ -163,7 +172,11 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
         icona: Icons.cloud_off,
         titolo: 'Impossibile caricare le evidenze',
         testo: _errore,
-        azione: OutlinedButton.icon(onPressed: _ricarica, icon: const Icon(Icons.refresh), label: const Text('Riprova')),
+        azione: OutlinedButton.icon(
+          onPressed: _ricarica,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Riprova'),
+        ),
       );
     }
     if (_evidenze.isEmpty && _caricando) {
@@ -177,7 +190,9 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
               children: [
                 StatoVuoto(
                   icona: _filtriAttivi ? Icons.search_off : Icons.folder_open,
-                  titolo: _filtriAttivi ? 'Nessun risultato' : 'Nessuna evidenza certificata',
+                  titolo: _filtriAttivi
+                      ? 'Nessun risultato'
+                      : 'Nessuna evidenza certificata',
                   testo: _filtriAttivi
                       ? 'Nessuna evidenza corrisponde alla ricerca o al filtro scelto.'
                       : 'Le foto e i video che certifichi compariranno qui.',
@@ -194,12 +209,19 @@ class _EvidenzeScreenState extends State<EvidenzeScreen> {
                 if (i == 0) {
                   return Text(
                     '$_totale evidenz${_totale == 1 ? 'a' : 'e'}',
-                    style: const TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600, fontSize: 13),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
                   );
                 }
                 if (i == _evidenze.length + 1) {
                   return _pagina < _pagine
-                      ? const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
                       : const SizedBox.shrink();
                 }
                 return _RigaEvidenza(evidenza: _evidenze[i - 1]);
@@ -220,7 +242,9 @@ class _RigaEvidenza extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EvidenzaScreen(evidenza: e))),
+        onTap: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => EvidenzaScreen(evidenza: e))),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -228,8 +252,14 @@ class _RigaEvidenza extends StatelessWidget {
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(color: kBrandSoft, borderRadius: BorderRadius.circular(12)),
-                child: Icon(e.isVideo ? Icons.videocam : Icons.photo, color: kBrand),
+                decoration: BoxDecoration(
+                  color: kBrandSoft,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  e.isVideo ? Icons.videocam : Icons.photo,
+                  color: kBrand,
+                ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -241,7 +271,11 @@ class _RigaEvidenza extends StatelessWidget {
                         Expanded(
                           child: Text(
                             e.codice,
-                            style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w700, fontSize: 14),
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -252,17 +286,33 @@ class _RigaEvidenza extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Expanded(child: Text(e.data, style: const TextStyle(color: Color(0xFF475569), fontSize: 13))),
-                        if (e.conformita != null) BadgeConformita(conformita: e.conformita!),
+                        Expanded(
+                          child: Text(
+                            e.data,
+                            style: const TextStyle(
+                              color: Color(0xFF475569),
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        if (e.conformita != null)
+                          BadgeConformita(conformita: e.conformita!),
                       ],
                     ),
                     if (e.area.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        [e.area, if (e.nonConformita.isNotEmpty) e.nonConformita].join(' · '),
+                        [
+                          e.area,
+                          if (e.nonConformita.isNotEmpty) e.nonConformita,
+                        ].join(' · '),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Color(0xFF334155), fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          color: Color(0xFF334155),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                     if (e.descrizione.isNotEmpty) ...[
@@ -271,7 +321,10 @@ class _RigaEvidenza extends StatelessWidget {
                         e.descrizione,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ],

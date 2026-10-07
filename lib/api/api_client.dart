@@ -19,7 +19,8 @@ class ApiException implements Exception {
 }
 
 class SessioneScadutaException extends ApiException {
-  SessioneScadutaException() : super('Sessione scaduta: effettua di nuovo l\'accesso.');
+  SessioneScadutaException()
+    : super('Sessione scaduta: effettua di nuovo l\'accesso.');
 }
 
 /// Client for the Securlink 2.0 REST API (`/api/v1/preposto/*`).
@@ -31,8 +32,8 @@ class SessioneScadutaException extends ApiException {
 /// case the server answers 401 and the user logs in again.
 class SecurlinkApi {
   SecurlinkApi({FlutterSecureStorage? storage, http.Client? client})
-      : _storage = storage ?? const FlutterSecureStorage(),
-        _http = client ?? http.Client();
+    : _storage = storage ?? const FlutterSecureStorage(),
+      _http = client ?? http.Client();
 
   static const _kToken = 'access_token';
   static const _kUtente = 'utente';
@@ -54,22 +55,32 @@ class SecurlinkApi {
   Future<void> init() async {
     _token = await _storage.read(key: _kToken);
     _userAgent = await _costruisciUserAgent();
-    _dispositivo = _userAgent.length > 100 ? _userAgent.substring(0, 100) : _userAgent;
+    _dispositivo = _userAgent.length > 100
+        ? _userAgent.substring(0, 100)
+        : _userAgent;
   }
 
   Future<Utente?> utenteSalvato() async {
     final json = await _storage.read(key: _kUtente);
-    return json == null ? null : Utente.fromJson(jsonDecode(json) as Map<String, dynamic>);
+    return json == null
+        ? null
+        : Utente.fromJson(jsonDecode(json) as Map<String, dynamic>);
   }
 
   // ------------------------------------------------------------------ auth
 
   Future<void> login(String email, String password) async {
-    final res = await _esegui(() => _http.post(
-          _uri('$_base/accesso'),
-          headers: _headersJson(),
-          body: jsonEncode({'email': email.trim(), 'password': password, 'dispositivo': _dispositivo}),
-        ));
+    final res = await _esegui(
+      () => _http.post(
+        _uri('$_base/accesso'),
+        headers: _headersJson(),
+        body: jsonEncode({
+          'email': email.trim(),
+          'password': password,
+          'dispositivo': _dispositivo,
+        }),
+      ),
+    );
     final json = _decodifica(res);
     final token = tokenDaRisposta(json);
     if (res.statusCode != 200 || token == null) {
@@ -87,7 +98,10 @@ class SecurlinkApi {
     // Best effort: the server revokes this device's token.
     try {
       await _http
-          .post(_uri('$_base/uscita'), headers: {..._headersBase(), 'Authorization': 'Bearer $token'})
+          .post(
+            _uri('$_base/uscita'),
+            headers: {..._headersBase(), 'Authorization': 'Bearer $token'},
+          )
           .timeout(const Duration(seconds: 10));
     } on Exception {
       // Offline: the token stays valid on the server until the next password change.
@@ -104,12 +118,20 @@ class SecurlinkApi {
 
   /// Changes the password. The server revokes every token (other devices must
   /// log in again) and returns a new one for this device.
-  Future<void> cambiaPassword({required String attuale, required String nuova}) async {
-    final res = await _autenticata((headers) => _http.post(
-          _uri('$_base/password'),
-          headers: headers,
-          body: jsonEncode({'password_attuale': attuale, 'nuova_password': nuova}),
-        ));
+  Future<void> cambiaPassword({
+    required String attuale,
+    required String nuova,
+  }) async {
+    final res = await _autenticata(
+      (headers) => _http.post(
+        _uri('$_base/password'),
+        headers: headers,
+        body: jsonEncode({
+          'password_attuale': attuale,
+          'nuova_password': nuova,
+        }),
+      ),
+    );
     final nuovoToken = _jsonOk(res)['token'];
     if (nuovoToken is String && nuovoToken.isNotEmpty) {
       _token = nuovoToken;
@@ -123,24 +145,44 @@ class SecurlinkApi {
 
   /// Creates an entry (or returns the existing one with the same name) and
   /// the refreshed list.
-  Future<({String valore, List<String> voci})> aggiungiVoce(TipoVoce tipo, String valore) async {
-    final res = await _autenticata((headers) => _http.post(
-          _uri('$_base/voci'),
-          headers: headers,
-          body: jsonEncode({'tipo': tipo.valoreApi, 'valore': valore}),
-        ));
+  Future<({String valore, List<String> voci})> aggiungiVoce(
+    TipoVoce tipo,
+    String valore,
+  ) async {
+    final res = await _autenticata(
+      (headers) => _http.post(
+        _uri('$_base/voci'),
+        headers: headers,
+        body: jsonEncode({'tipo': tipo.valoreApi, 'valore': valore}),
+      ),
+    );
     final dati = _dati(_jsonOk(res));
-    return (valore: (dati['voce'] as Map)['nome'] as String, voci: nomiVoci(dati['voci']));
+    return (
+      valore: (dati['voce'] as Map)['nome'] as String,
+      voci: nomiVoci(dati['voci']),
+    );
   }
 
   /// Removes an entry from the family's list (any user of the group can).
   /// Already certified evidences keep their text. Returns the updated list.
   Future<List<String>> eliminaVoce(TipoVoce tipo, String valore) async {
     // The server deletes by id: find the entry by name in the current list.
-    final elenco = _dati(await _getJson('$_base/voci'))[tipo.valoreApi] as List? ?? const [];
-    final voce = elenco.cast<Map>().where((v) => (v['nome'] as String).toLowerCase() == valore.toLowerCase()).firstOrNull;
+    final elenco =
+        _dati(await _getJson('$_base/voci'))[tipo.valoreApi] as List? ??
+        const [];
+    final voce = elenco
+        .cast<Map>()
+        .where(
+          (v) => (v['nome'] as String).toLowerCase() == valore.toLowerCase(),
+        )
+        .firstOrNull;
     if (voce == null) return nomiVoci(elenco);
-    final res = await _autenticata((headers) => _http.delete(_uri('$_base/voci/${tipo.valoreApi}/${voce['id']}'), headers: headers));
+    final res = await _autenticata(
+      (headers) => _http.delete(
+        _uri('$_base/voci/${tipo.valoreApi}/${voce['id']}'),
+        headers: headers,
+      ),
+    );
     return nomiVoci(_dati(_jsonOk(res))['voci']);
   }
 
@@ -158,7 +200,8 @@ class SecurlinkApi {
         ..fields.addAll({
           'esito': segnalazione.conformita.valoreApi,
           'area': segnalazione.area,
-          if (segnalazione.nonConformita != null) 'non_conformita': segnalazione.nonConformita!,
+          if (segnalazione.nonConformita != null)
+            'non_conformita': segnalazione.nonConformita!,
           'descrizione': descrizione,
           'gps_lat': '$lat',
           'gps_lon': '$lon',
@@ -172,28 +215,45 @@ class SecurlinkApi {
     return EsitoCertificazione.fromJson(_dati(_jsonOk(res)));
   }
 
-  Future<PaginaEvidenze> evidenze({String cerca = '', Conformita? conformita, int pagina = 1}) async {
-    final json = await _getJson('$_base/evidenze', query: {
-      if (cerca.isNotEmpty) 's': cerca,
-      if (conformita != null) 'esito': conformita.valoreApi,
-      'page': '$pagina',
-      'per_pagina': '20',
-    });
+  Future<PaginaEvidenze> evidenze({
+    String cerca = '',
+    Conformita? conformita,
+    int pagina = 1,
+  }) async {
+    final json = await _getJson(
+      '$_base/evidenze',
+      query: {
+        if (cerca.isNotEmpty) 's': cerca,
+        if (conformita != null) 'esito': conformita.valoreApi,
+        'page': '$pagina',
+        'per_pagina': '20',
+      },
+    );
     return PaginaEvidenze.fromJson(json);
   }
 
   Future<EsitoVerifica> verifica(int evidenzaId) async {
-    final res = await _autenticata((headers) => _http.post(_uri('$_base/evidenze/$evidenzaId/verifica'), headers: headers));
+    final res = await _autenticata(
+      (headers) => _http.post(
+        _uri('$_base/evidenze/$evidenzaId/verifica'),
+        headers: headers,
+      ),
+    );
     return EsitoVerifica.fromJson(_dati(_jsonOk(res)));
   }
 
   /// Original photo/video, cached: it never changes once certified.
   Future<File> fileOriginale(Evidenza evidenza) async {
     final dir = await getApplicationCacheDirectory();
-    final file = File('${dir.path}/originali/${evidenza.id}-${nomeFileSicuro(evidenza.nomeFile)}');
+    final file = File(
+      '${dir.path}/originali/${evidenza.id}-${nomeFileSicuro(evidenza.nomeFile)}',
+    );
     if (await file.exists()) return file;
     final res = await _autenticata(
-      (headers) => _http.get(_uri('$_base/evidenze/${evidenza.id}/file', {'inline': '1'}), headers: headers),
+      (headers) => _http.get(
+        _uri('$_base/evidenze/${evidenza.id}/file', {'inline': '1'}),
+        headers: headers,
+      ),
       timeout: _timeoutLungo,
     );
     _verificaOk(res);
@@ -210,9 +270,12 @@ class SecurlinkApi {
       timeout: _timeoutLungo,
     );
     _verificaOk(res);
-    final nome = nomeDaContentDisposition(res.headers['content-disposition']) ??
+    final nome =
+        nomeDaContentDisposition(res.headers['content-disposition']) ??
         '${nomeFileSicuro(evidenza.codice)}.${formato.name}';
-    final dir = Directory('${(await getApplicationDocumentsDirectory()).path}/Report');
+    final dir = Directory(
+      '${(await getApplicationDocumentsDirectory()).path}/Report',
+    );
     await dir.create(recursive: true);
     return File('${dir.path}/$nome').writeAsBytes(res.bodyBytes, flush: true);
   }
@@ -222,12 +285,23 @@ class SecurlinkApi {
   Uri _uri(String path, [Map<String, String>? query]) =>
       Uri.parse(kBaseUrl).replace(path: path, queryParameters: query);
 
-  Map<String, String> _headersBase() => {'Accept': 'application/json', 'User-Agent': _userAgent};
+  Map<String, String> _headersBase() => {
+    'Accept': 'application/json',
+    'User-Agent': _userAgent,
+  };
 
-  Map<String, String> _headersJson() => {..._headersBase(), 'Content-Type': 'application/json'};
+  Map<String, String> _headersJson() => {
+    ..._headersBase(),
+    'Content-Type': 'application/json',
+  };
 
-  Future<Map<String, dynamic>> _getJson(String path, {Map<String, String>? query}) async {
-    final res = await _autenticata((headers) => _http.get(_uri(path, query), headers: headers));
+  Future<Map<String, dynamic>> _getJson(
+    String path, {
+    Map<String, String>? query,
+  }) async {
+    final res = await _autenticata(
+      (headers) => _http.get(_uri(path, query), headers: headers),
+    );
     return _jsonOk(res);
   }
 
@@ -237,7 +311,10 @@ class SecurlinkApi {
   }) async {
     if (_token == null) throw _sessioneScaduta();
     // JSON for the calls that send a body; the multipart request sets its own Content-Type.
-    final res = await _esegui(() => richiesta({..._headersJson(), 'Authorization': 'Bearer $_token'}), timeout: timeout);
+    final res = await _esegui(
+      () => richiesta({..._headersJson(), 'Authorization': 'Bearer $_token'}),
+      timeout: timeout,
+    );
     // 401 = token revoked (password changed elsewhere, account blocked). A 403 is final
     // and carries its own message (e.g. «funzionalità non attiva»): it is not a logout.
     if (res.statusCode == 401) throw _sessioneScaduta();
@@ -250,12 +327,16 @@ class SecurlinkApi {
     return SessioneScadutaException();
   }
 
-  Future<http.Response> _esegui(Future<http.Response> Function() richiesta,
-      {Duration timeout = _timeoutBreve}) async {
+  Future<http.Response> _esegui(
+    Future<http.Response> Function() richiesta, {
+    Duration timeout = _timeoutBreve,
+  }) async {
     try {
       return await richiesta().timeout(timeout);
     } on SocketException {
-      throw ApiException('Nessuna connessione a Internet. Controlla la rete e riprova.');
+      throw ApiException(
+        'Nessuna connessione a Internet. Controlla la rete e riprova.',
+      );
     } on TimeoutException {
       throw ApiException('Il server non risponde. Riprova tra poco.');
     } on http.ClientException {
@@ -281,9 +362,13 @@ class SecurlinkApi {
     if (res.statusCode >= 200 && res.statusCode < 300) return;
     // 5xx bodies are not meant for the user.
     if (res.statusCode >= 500) {
-      throw ApiException('Errore interno del server (${res.statusCode}). Riprova tra poco; se si ripete contatta Securlav.');
+      throw ApiException(
+        'Errore interno del server (${res.statusCode}). Riprova tra poco; se si ripete contatta Securlav.',
+      );
     }
-    throw ApiException(_messaggio(_decodifica(res)) ?? 'Errore del server (${res.statusCode}).');
+    throw ApiException(
+      _messaggio(_decodifica(res)) ?? 'Errore del server (${res.statusCode}).',
+    );
   }
 
   /// Laravel validation errors come as `errors: {field: [message]}`; otherwise `message`.
@@ -291,7 +376,9 @@ class SecurlinkApi {
     final errori = json['errors'];
     if (errori is Map && errori.isNotEmpty) {
       final primo = errori.values.first;
-      if (primo is List && primo.isNotEmpty && primo.first is String) return primo.first as String;
+      if (primo is List && primo.isNotEmpty && primo.first is String) {
+        return primo.first as String;
+      }
     }
     final msg = json['message'];
     return msg is String && msg.isNotEmpty ? msg : null;
@@ -336,18 +423,26 @@ String messaggioLoginFallito(Map<String, dynamic> json) {
   final errori = json['errors'];
   if (errori is Map && errori.isNotEmpty) {
     final primo = errori.values.first;
-    if (primo is List && primo.isNotEmpty && primo.first is String) return primo.first as String;
+    if (primo is List && primo.isNotEmpty && primo.first is String) {
+      return primo.first as String;
+    }
   }
   final msg = json['message'];
-  if (msg is String && msg.isNotEmpty) return msg.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  if (msg is String && msg.isNotEmpty) {
+    return msg.replaceAll(RegExp(r'<[^>]*>'), '').trim();
+  }
   return 'Accesso non riuscito.';
 }
 
 String? nomeDaContentDisposition(String? header) {
   if (header == null) return null;
-  final match = RegExp(r'filename="?([^";]+)"?', caseSensitive: false).firstMatch(header);
+  final match = RegExp(
+    r'filename="?([^";]+)"?',
+    caseSensitive: false,
+  ).firstMatch(header);
   final nome = match?.group(1)?.trim();
   return nome == null || nome.isEmpty ? null : nomeFileSicuro(nome);
 }
 
-String nomeFileSicuro(String nome) => nome.replaceAll(RegExp(r'[\\/:*?"<>|\s]'), '_');
+String nomeFileSicuro(String nome) =>
+    nome.replaceAll(RegExp(r'[\\/:*?"<>|\s]'), '_');

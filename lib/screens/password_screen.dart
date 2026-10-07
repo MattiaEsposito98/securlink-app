@@ -36,10 +36,15 @@ class _PasswordScreenState extends State<PasswordScreen> {
       _errore = null;
     });
     try {
-      await SessioneScope.read(context).api.cambiaPassword(attuale: _attuale.text, nuova: _nuova.text);
+      await SessioneScope.read(context).api
+          .cambiaPassword(attuale: _attuale.text, nuova: _nuova.text);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password modificata. Usala anche per accedere al sito.')),
+        const SnackBar(
+          content: Text(
+            'Password modificata. Usala anche per accedere al sito.',
+          ),
+        ),
       );
       Navigator.of(context).pop();
     } on SessioneScadutaException {
@@ -52,14 +57,14 @@ class _PasswordScreenState extends State<PasswordScreen> {
   }
 
   InputDecoration _decorazione(String etichetta) => InputDecoration(
-        labelText: etichetta,
-        prefixIcon: const Icon(Icons.lock_outline),
-        suffixIcon: IconButton(
-          icon: Icon(_mostra ? Icons.visibility_off : Icons.visibility),
-          tooltip: _mostra ? 'Nascondi password' : 'Mostra password',
-          onPressed: () => setState(() => _mostra = !_mostra),
-        ),
-      );
+    labelText: etichetta,
+    prefixIcon: const Icon(Icons.lock_outline),
+    suffixIcon: IconButton(
+      icon: Icon(_mostra ? Icons.visibility_off : Icons.visibility),
+      tooltip: _mostra ? 'Nascondi password' : 'Mostra password',
+      onPressed: () => setState(() => _mostra = !_mostra),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +89,9 @@ class _PasswordScreenState extends State<PasswordScreen> {
                 autofillHints: const [AutofillHints.password],
                 textInputAction: TextInputAction.next,
                 decoration: _decorazione('Password attuale'),
-                validator: (v) => (v == null || v.isEmpty) ? 'Inserisci la password attuale' : null,
+                validator: (v) => (v == null || v.isEmpty)
+                    ? 'Inserisci la password attuale'
+                    : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
@@ -93,10 +100,15 @@ class _PasswordScreenState extends State<PasswordScreen> {
                 obscureText: !_mostra,
                 autofillHints: const [AutofillHints.newPassword],
                 textInputAction: TextInputAction.next,
-                decoration: _decorazione('Nuova password').copyWith(helperText: 'Almeno 8 caratteri'),
+                decoration: _decorazione('Nuova password')
+                    .copyWith(helperText: 'Almeno 8 caratteri'),
                 validator: (v) {
-                  if (v == null || v.length < 8) return 'La password deve avere almeno 8 caratteri';
-                  if (v == _attuale.text) return 'Deve essere diversa da quella attuale';
+                  if (v == null || v.length < 8) {
+                    return 'La password deve avere almeno 8 caratteri';
+                  }
+                  if (v == _attuale.text) {
+                    return 'Deve essere diversa da quella attuale';
+                  }
                   return null;
                 },
               ),
@@ -109,7 +121,8 @@ class _PasswordScreenState extends State<PasswordScreen> {
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _salva(),
                 decoration: _decorazione('Conferma nuova password'),
-                validator: (v) => v != _nuova.text ? 'Le due password non coincidono' : null,
+                validator: (v) =>
+                    v != _nuova.text ? 'Le due password non coincidono' : null,
               ),
               if (_errore != null) ...[
                 const SizedBox(height: 16),
@@ -119,7 +132,14 @@ class _PasswordScreenState extends State<PasswordScreen> {
               FilledButton(
                 onPressed: _inCorso ? null : _salva,
                 child: _inCorso
-                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Text('Salva nuova password'),
               ),
             ],

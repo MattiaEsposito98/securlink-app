@@ -41,28 +41,45 @@ class SecurlinkApp extends StatelessWidget {
             elevation: 0,
             scrolledUnderElevation: 1,
             shadowColor: Color(0x22000000),
-            titleTextStyle: TextStyle(color: kBrand, fontSize: 18, fontWeight: FontWeight.w700),
+            titleTextStyle: TextStyle(
+              color: kBrand,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
             systemOverlayStyle: SystemUiOverlayStyle.dark,
           ),
           navigationBarTheme: NavigationBarThemeData(
             backgroundColor: Colors.white,
             indicatorColor: kArancio.withValues(alpha: .16),
             iconTheme: WidgetStateProperty.resolveWith(
-              (s) => IconThemeData(color: s.contains(WidgetState.selected) ? kArancio : const Color(0xFF64748B)),
+              (s) => IconThemeData(
+                color: s.contains(WidgetState.selected)
+                    ? kArancio
+                    : const Color(0xFF64748B),
+              ),
             ),
             labelTextStyle: WidgetStateProperty.resolveWith(
               (s) => TextStyle(
                 fontSize: 12,
-                fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
-                color: s.contains(WidgetState.selected) ? kBrand : const Color(0xFF64748B),
+                fontWeight: s.contains(WidgetState.selected)
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+                color: s.contains(WidgetState.selected)
+                    ? kBrand
+                    : const Color(0xFF64748B),
               ),
             ),
           ),
           filledButtonTheme: FilledButtonThemeData(
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           inputDecorationTheme: InputDecorationTheme(
@@ -96,7 +113,9 @@ class _Radice extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (SessioneScope.of(context).stato) {
-      StatoSessione.avvio => const Scaffold(body: Center(child: CircularProgressIndicator())),
+      StatoSessione.avvio => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
       StatoSessione.anonimo => const LoginScreen(),
       StatoSessione.autenticato => const HomeScreen(),
     };

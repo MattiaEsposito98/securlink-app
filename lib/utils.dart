@@ -14,7 +14,9 @@ class PosizioneException implements Exception {
 /// GPS is mandatory for certification: every failure becomes a clear message.
 Future<Position> rilevaPosizione() async {
   if (!await Geolocator.isLocationServiceEnabled()) {
-    throw PosizioneException('La localizzazione del telefono è spenta: attivala per certificare.');
+    throw PosizioneException(
+      'La localizzazione del telefono è spenta: attivala per certificare.',
+    );
   }
   var permesso = await Geolocator.checkPermission();
   if (permesso == LocationPermission.denied) {
@@ -26,8 +28,11 @@ Future<Position> rilevaPosizione() async {
       apriImpostazioni: true,
     );
   }
-  if (permesso == LocationPermission.denied || permesso == LocationPermission.unableToDetermine) {
-    throw PosizioneException('Senza posizione GPS non è possibile certificare.');
+  if (permesso == LocationPermission.denied ||
+      permesso == LocationPermission.unableToDetermine) {
+    throw PosizioneException(
+      'Senza posizione GPS non è possibile certificare.',
+    );
   }
   try {
     return await Geolocator.getCurrentPosition(
@@ -37,7 +42,9 @@ Future<Position> rilevaPosizione() async {
       ),
     );
   } on TimeoutException {
-    throw PosizioneException('Posizione non rilevata in tempo. Riprova, possibilmente all\'aperto.');
+    throw PosizioneException(
+      'Posizione non rilevata in tempo. Riprova, possibilmente all\'aperto.',
+    );
   }
 }
 

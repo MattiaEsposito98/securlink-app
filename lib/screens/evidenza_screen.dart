@@ -77,24 +77,39 @@ class _EvidenzaScreenState extends State<EvidenzaScreen> {
     }
   }
 
-  Future<void> _esporta(FormatoReport formato, {required bool condividi}) async {
+  Future<void> _esporta(
+    FormatoReport formato, {
+    required bool condividi,
+  }) async {
     setState(() => _esportando = formato);
     try {
       final file = await _api.esporta(_e, formato);
       if (condividi) {
-        await SharePlus.instance.share(ShareParams(files: [XFile(file.path)], subject: 'Evidenza ${_e.codice}'));
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            subject: 'Evidenza ${_e.codice}',
+          ),
+        );
       } else {
         final risultato = await OpenFilex.open(file.path);
         if (risultato.type != ResultType.done && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Nessuna app per aprire questo file: usa "Condividi" per salvarlo o inviarlo.')),
+            const SnackBar(
+              content: Text(
+                'Nessuna app per aprire questo file: usa "Condividi" per salvarlo o inviarlo.',
+              ),
+            ),
           );
         }
       }
     } on SessioneScadutaException {
       // Handled by the session listener.
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.message)));
+      }
     } finally {
       if (mounted) setState(() => _esportando = null);
     }
@@ -118,16 +133,25 @@ class _EvidenzaScreenState extends State<EvidenzaScreen> {
                 _Riga(etichetta: 'File', valore: _e.nomeFile),
                 _Riga(
                   etichetta: 'Ambiente',
-                  child: Align(alignment: Alignment.centerLeft, child: BadgeAmbiente(isTest: _e.isTest)),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: BadgeAmbiente(isTest: _e.isTest),
+                  ),
                 ),
                 if (_e.conformita != null)
                   _Riga(
                     etichetta: 'Esito',
-                    child: Align(alignment: Alignment.centerLeft, child: BadgeConformita(conformita: _e.conformita!)),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: BadgeConformita(conformita: _e.conformita!),
+                    ),
                   ),
-                if (_e.area.isNotEmpty) _Riga(etichetta: 'Area', valore: _e.area),
-                if (_e.nonConformita.isNotEmpty) _Riga(etichetta: 'Non conformità', valore: _e.nonConformita),
-                if (_e.descrizione.isNotEmpty) _Riga(etichetta: 'Descrizione', valore: _e.descrizione),
+                if (_e.area.isNotEmpty)
+                  _Riga(etichetta: 'Area', valore: _e.area),
+                if (_e.nonConformita.isNotEmpty)
+                  _Riga(etichetta: 'Non conformità', valore: _e.nonConformita),
+                if (_e.descrizione.isNotEmpty)
+                  _Riga(etichetta: 'Descrizione', valore: _e.descrizione),
               ],
             ),
           ),
@@ -144,18 +168,24 @@ class _EvidenzaScreenState extends State<EvidenzaScreen> {
                 const SizedBox(height: 12),
                 if (_verifica != null) ...[
                   BoxMessaggio(
-                    tipo: _verifica!.integra ? TipoMessaggio.ok : TipoMessaggio.errore,
+                    tipo: _verifica!.integra
+                        ? TipoMessaggio.ok
+                        : TipoMessaggio.errore,
                     testo: _verifica!.integra
                         ? 'Integra — il file non è stato modificato.'
                         : _verifica!.hashAttuale.isEmpty
-                            ? 'File originale non trovato: impossibile verificare.'
-                            : 'ATTENZIONE — l\'impronta non corrisponde: il file risulta modificato.',
+                        ? 'File originale non trovato: impossibile verificare.'
+                        : 'ATTENZIONE — l\'impronta non corrisponde: il file risulta modificato.',
                   ),
                   const SizedBox(height: 8),
                   if (_verifica!.hashAttuale.isNotEmpty)
                     SelectableText(
                       'SHA-256: ${_verifica!.hashAttuale}',
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 11, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   const SizedBox(height: 12),
                 ],
@@ -167,12 +197,20 @@ class _EvidenzaScreenState extends State<EvidenzaScreen> {
                   onPressed: _verificando ? null : _verificaIntegrita,
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(46),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   icon: _verificando
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Icon(Icons.fingerprint),
-                  label: Text(_verificando ? 'Verifica in corso…' : 'Verifica integrità'),
+                  label: Text(
+                    _verificando ? 'Verifica in corso…' : 'Verifica integrità',
+                  ),
                 ),
               ],
             ),
@@ -203,7 +241,10 @@ class _EvidenzaScreenState extends State<EvidenzaScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         color: const Color(0xFF0F172A),
-        constraints: BoxConstraints(minHeight: 220, maxHeight: MediaQuery.sizeOf(context).height * .5),
+        constraints: BoxConstraints(
+          minHeight: 220,
+          maxHeight: MediaQuery.sizeOf(context).height * .5,
+        ),
         alignment: Alignment.center,
         child: FutureBuilder<File>(
           future: _media,
@@ -214,25 +255,38 @@ class _EvidenzaScreenState extends State<EvidenzaScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 40),
+                    const Icon(
+                      Icons.broken_image_outlined,
+                      color: Colors.white54,
+                      size: 40,
+                    ),
                     const SizedBox(height: 8),
                     Text(
-                      snap.error is ApiException ? (snap.error as ApiException).message : 'Anteprima non disponibile.',
+                      snap.error is ApiException
+                          ? (snap.error as ApiException).message
+                          : 'Anteprima non disponibile.',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.white70),
                     ),
                     TextButton(
                       onPressed: () => setState(() => _media = _caricaMedia()),
-                      child: const Text('Riprova', style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        'Riprova',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
               );
             }
-            if (!snap.hasData) return const CircularProgressIndicator(color: Colors.white);
+            if (!snap.hasData) {
+              return const CircularProgressIndicator(color: Colors.white);
+            }
             final v = _video;
             if (_e.isVideo && v != null) return VideoAnteprima(controller: v);
-            return InteractiveViewer(child: Image.file(snap.data!, fit: BoxFit.contain));
+            return InteractiveViewer(
+              child: Image.file(snap.data!, fit: BoxFit.contain),
+            );
           },
         ),
       ),
@@ -254,7 +308,10 @@ class _Sezione extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(titolo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(
+              titolo,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 10),
             child,
           ],
@@ -265,7 +322,12 @@ class _Sezione extends StatelessWidget {
 }
 
 class _Riga extends StatelessWidget {
-  const _Riga({required this.etichetta, this.valore, this.child, this.mono = false});
+  const _Riga({
+    required this.etichetta,
+    this.valore,
+    this.child,
+    this.mono = false,
+  });
 
   final String etichetta;
   final String? valore;
@@ -279,12 +341,22 @@ class _Riga extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 112, child: Text(etichetta, style: const TextStyle(color: Color(0xFF94A3B8)))),
+          SizedBox(
+            width: 112,
+            child: Text(
+              etichetta,
+              style: const TextStyle(color: Color(0xFF94A3B8)),
+            ),
+          ),
           Expanded(
-            child: child ??
+            child:
+                child ??
                 SelectableText(
                   valore ?? '',
-                  style: TextStyle(fontFamily: mono ? 'monospace' : null, color: const Color(0xFF0F172A)),
+                  style: TextStyle(
+                    fontFamily: mono ? 'monospace' : null,
+                    color: const Color(0xFF0F172A),
+                  ),
                 ),
           ),
         ],
@@ -318,13 +390,30 @@ class _RigaReport extends StatelessWidget {
         width: 44,
         height: 44,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: kBrandSoft, borderRadius: BorderRadius.circular(10)),
-        child: Text(formato.etichetta, style: const TextStyle(color: kBrand, fontWeight: FontWeight.w800, fontSize: 12)),
+        decoration: BoxDecoration(
+          color: kBrandSoft,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          formato.etichetta,
+          style: const TextStyle(
+            color: kBrand,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
+        ),
       ),
-      title: Text(formato.etichetta, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        formato.etichetta,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: Text(formato.descrizione),
       trailing: inCorso
-          ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5))
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            )
           : IconButton(
               tooltip: 'Condividi',
               icon: const Icon(Icons.share_outlined),

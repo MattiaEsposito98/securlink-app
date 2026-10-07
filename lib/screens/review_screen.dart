@@ -16,7 +16,12 @@ enum _Fase { pronto, posizione, invio }
 /// Shows the capture, collects the note, then GPS + upload + timestamp.
 /// Pops `true` once certified, `false` to retake.
 class ReviewScreen extends StatefulWidget {
-  const ReviewScreen({super.key, required this.file, required this.isVideo, required this.segnalazione});
+  const ReviewScreen({
+    super.key,
+    required this.file,
+    required this.isVideo,
+    required this.segnalazione,
+  });
 
   final File file;
   final bool isVideo;
@@ -39,7 +44,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
   @override
   void initState() {
     super.initState();
-    widget.file.length().then((v) => mounted ? setState(() => _dimensione = v) : null);
+    widget.file.length().then(
+      (v) => mounted ? setState(() => _dimensione = v) : null,
+    );
     if (widget.isVideo) {
       final v = VideoPlayerController.file(widget.file);
       _video = v;
@@ -61,7 +68,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
     FocusScope.of(context).unfocus();
     final descrizione = _nota.text.trim();
     if (descrizione.isEmpty) {
-      _mostraErrore('La descrizione è obbligatoria: spiega perché è ${widget.conformita == Conformita.conforme ? 'conforme' : 'non conforme'}.');
+      _mostraErrore(
+        'La descrizione è obbligatoria: spiega perché è ${widget.conformita == Conformita.conforme ? 'conforme' : 'non conforme'}.',
+      );
       return;
     }
     _video?.pause();
@@ -114,11 +123,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('La marca temporale qualificata è stata applicata.', textAlign: TextAlign.center),
+            const Text(
+              'La marca temporale qualificata è stata applicata.',
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             SelectableText(
               esito.codice,
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 16, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 8),
             BadgeAmbiente(isTest: esito.ambiente != 'production'),
@@ -151,29 +167,48 @@ class _ReviewScreenState extends State<ReviewScreen> {
               borderRadius: BorderRadius.circular(16),
               child: Container(
                 color: const Color(0xFF0F172A),
-                constraints: BoxConstraints(maxHeight: altezzaMedia, minHeight: 200),
+                constraints: BoxConstraints(
+                  maxHeight: altezzaMedia,
+                  minHeight: 200,
+                ),
                 alignment: Alignment.center,
                 child: widget.isVideo
                     ? (v != null && v.value.isInitialized
-                        ? VideoAnteprima(controller: v)
-                        : const CircularProgressIndicator(color: Colors.white))
+                          ? VideoAnteprima(controller: v)
+                          : const CircularProgressIndicator(
+                              color: Colors.white,
+                            ))
                     : Image.file(widget.file, fit: BoxFit.contain),
               ),
             ),
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(widget.isVideo ? Icons.videocam_outlined : Icons.photo_outlined, size: 18, color: const Color(0xFF64748B)),
+                Icon(
+                  widget.isVideo
+                      ? Icons.videocam_outlined
+                      : Icons.photo_outlined,
+                  size: 18,
+                  color: const Color(0xFF64748B),
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    [widget.file.uri.pathSegments.last, if (_dimensione != null) formattaMb(_dimensione!)].join(' · '),
-                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                    [
+                      widget.file.uri.pathSegments.last,
+                      if (_dimensione != null) formattaMb(_dimensione!),
+                    ].join(' · '),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 13,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 TextButton.icon(
-                  onPressed: inCorso ? null : () => Navigator.of(context).pop(false),
+                  onPressed: inCorso
+                      ? null
+                      : () => Navigator.of(context).pop(false),
                   icon: const Icon(Icons.replay),
                   label: const Text('Rifai'),
                 ),
@@ -186,8 +221,16 @@ class _ReviewScreenState extends State<ReviewScreen> {
               children: [
                 BadgeConformita(conformita: widget.conformita),
                 Text(
-                  [widget.segnalazione.area, if (widget.segnalazione.nonConformita != null) widget.segnalazione.nonConformita!].join(' · '),
-                  style: const TextStyle(color: Color(0xFF334155), fontWeight: FontWeight.w600, fontSize: 13),
+                  [
+                    widget.segnalazione.area,
+                    if (widget.segnalazione.nonConformita != null)
+                      widget.segnalazione.nonConformita!,
+                  ].join(' · '),
+                  style: const TextStyle(
+                    color: Color(0xFF334155),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -213,7 +256,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
               BoxMessaggio(
                 testo: _errore!,
                 azione: _erroreImpostazioni
-                    ? TextButton(onPressed: Geolocator.openAppSettings, child: const Text('Apri impostazioni'))
+                    ? TextButton(
+                        onPressed: Geolocator.openAppSettings,
+                        child: const Text('Apri impostazioni'),
+                      )
                     : null,
               ),
             ],
@@ -221,7 +267,14 @@ class _ReviewScreenState extends State<ReviewScreen> {
             FilledButton.icon(
               onPressed: inCorso ? null : _certifica,
               icon: inCorso
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.verified_user_outlined),
               label: Text(switch (_fase) {
                 _Fase.pronto => 'Certifica con marca temporale',

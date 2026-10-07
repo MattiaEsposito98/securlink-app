@@ -5,20 +5,20 @@ class Utente {
     required this.email,
     required this.ambiente,
     required this.maxUploadMb,
-    this.usateMese,
-    this.limiteMese,
+    this.crediti,
+    this.creditiRiservati = false,
   });
 
   factory Utente.fromJson(Map<String, dynamic> json) {
-    final limite = json['limite_mensile'] as Map<String, dynamic>?;
+    final crediti = json['crediti'] as Map<String, dynamic>?;
     return Utente(
       id: json['id'] as int,
       nome: json['nome'] as String? ?? '',
       email: json['email'] as String? ?? '',
       ambiente: json['ambiente'] as String? ?? 'sandbox',
       maxUploadMb: json['max_upload_mb'] as int? ?? 10,
-      usateMese: limite?['usate'] as int?,
-      limiteMese: limite?['limite'] as int?,
+      crediti: crediti?['disponibili'] as int?,
+      creditiRiservati: crediti?['riservati'] as bool? ?? false,
     );
   }
 
@@ -27,8 +27,10 @@ class Utente {
   final String email;
   final String ambiente;
   final int maxUploadMb;
-  final int? usateMese;
-  final int? limiteMese;
+
+  /// Certificazioni ancora disponibili (null = informazione assente).
+  final int? crediti;
+  final bool creditiRiservati;
 
   bool get isTest => ambiente != 'production';
   int get maxUploadBytes => maxUploadMb * 1024 * 1024;
@@ -39,8 +41,8 @@ class Utente {
     'email': email,
     'ambiente': ambiente,
     'max_upload_mb': maxUploadMb,
-    if (limiteMese != null)
-      'limite_mensile': {'usate': usateMese, 'limite': limiteMese},
+    if (crediti != null)
+      'crediti': {'disponibili': crediti, 'riservati': creditiRiservati},
   };
 }
 
@@ -237,7 +239,9 @@ class EsitoVerifica {
 
   factory EsitoVerifica.fromJson(Map<String, dynamic> json) => EsitoVerifica(
     // The server also checks the marked manifest against the hash.
-    integra: (json['integro'] as bool? ?? false) && (json['manifest_coerente'] as bool? ?? false),
+    integra:
+        (json['integro'] as bool? ?? false) &&
+        (json['manifest_coerente'] as bool? ?? false),
     hashSalvato: json['hash_certificato'] as String? ?? '',
     hashAttuale: json['hash_calcolato'] as String? ?? '',
   );
@@ -259,5 +263,6 @@ enum FormatoReport {
 }
 
 /// Names of a list of `{id, nome}` entries.
-List<String> nomiVoci(Object? voci) =>
-    (voci as List? ?? const []).map((v) => (v as Map)['nome'] as String).toList();
+List<String> nomiVoci(Object? voci) => (voci as List? ?? const [])
+    .map((v) => (v as Map)['nome'] as String)
+    .toList();
