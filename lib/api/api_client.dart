@@ -50,6 +50,11 @@ class SecurlinkApi {
 
   void Function()? onSessioneScaduta;
 
+  /// Called when the server says a plugin is no longer active for the family
+  /// (403 with `codice` `*_non_attivo`): the session reloads the profile so
+  /// the app hides that plugin's functions.
+  void Function()? onPluginCambiati;
+
   bool get haSessione => _token != null;
 
   Future<void> init() async {
@@ -318,7 +323,19 @@ class SecurlinkApi {
     // 401 = token revoked (password changed elsewhere, account blocked). A 403 is final
     // and carries its own message (e.g. «funzionalità non attiva»): it is not a logout.
     if (res.statusCode == 401) throw _sessioneScaduta();
+    if (res.statusCode == 403 && _pluginNonAttivo(res)) {
+      onPluginCambiati?.call();
+    }
     return res;
+  }
+
+  bool _pluginNonAttivo(http.Response res) {
+    try {
+      final codice = (jsonDecode(res.body) as Map<String, dynamic>)['codice'];
+      return codice is String && codice.endsWith('_non_attivo');
+    } catch (_) {
+      return false;
+    }
   }
 
   SessioneScadutaException _sessioneScaduta() {

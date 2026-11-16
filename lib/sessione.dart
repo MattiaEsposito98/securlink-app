@@ -13,6 +13,7 @@ class Sessione extends ChangeNotifier {
       avviso = 'Sessione scaduta: effettua di nuovo l\'accesso.';
       notifyListeners();
     };
+    api.onPluginCambiati = aggiornaUtente;
   }
 
   final SecurlinkApi api;

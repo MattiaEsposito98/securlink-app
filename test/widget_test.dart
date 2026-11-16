@@ -5,6 +5,25 @@ import 'package:securlink/config.dart';
 import 'package:securlink/utils.dart';
 
 void main() {
+  group('plugin of the family (D-204)', () {
+    test('only the active plugins are read', () {
+      final u = Utente.fromJson({'id': 1, 'plugin': ['securgest']});
+      expect(u.haCertificazione, isFalse);
+      expect(u.haSecurgest, isTrue);
+    });
+
+    test('profiles without the field keep the certification', () {
+      final u = Utente.fromJson({'id': 1});
+      expect(u.haCertificazione, isTrue);
+      expect(u.haSecurgest, isFalse);
+    });
+
+    test('the saved profile keeps the plugins', () {
+      final u = Utente.fromJson(Utente.fromJson({'id': 1, 'plugin': ['preposto', 'securgest']}).toJson());
+      expect(u.plugin, ['preposto', 'securgest']);
+    });
+  });
+
   group('login response', () {
     test('reads the token from data', () {
       expect(tokenDaRisposta({'data': {'token': '12|abc', 'utente': {}}}), '12|abc');

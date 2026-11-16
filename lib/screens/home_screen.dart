@@ -19,7 +19,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _tab = 0;
   // Chosen before capturing; cleared after each certification so the next
   // one is a conscious choice again.
@@ -36,13 +36,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _caricaVoci();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _versioneEvidenze.dispose();
     super.dispose();
+  }
+
+  /// Back in the app: reload the profile, so a plugin switched on or off in
+  /// the meantime shows or hides its functions without logging in again.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      SessioneScope.read(context).aggiornaUtente();
+    }
   }
 
   Future<void> _caricaVoci() async {
@@ -163,6 +174,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final utente = SessioneScope.of(context).utente;
+    // Each plugin's functions exist in the app only when the family has it
+    // (D-204): without the Preposto plugin, no «Certifica» and no «Evidenze».
+    final certificazione = utente?.haCertificazione ?? false;
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
@@ -233,44 +247,93 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: IndexedStack(
-        index: _tab,
-        children: [
-          _CertificaTab(
-            utente: utente,
-            conformita: _conformita,
-            onConformita: _scegliConformita,
-            voci: _voci,
-            vociCaricate: _vociCaricate,
-            erroreVoci: _erroreVoci,
-            onRiprovaVoci: _caricaVoci,
-            area: _area,
-            onArea: (v) => setState(() => _area = v),
-            nonConformita: _nonConformita,
-            onNonConformita: (v) => setState(() => _nonConformita = v),
-            onCreaVoce: _creaVoce,
-            onEliminaVoce: _eliminaVoce,
-            segnalazioneCompleta: _segnalazioneCompleta,
-            onAcquisisci: _acquisisci,
-          ),
-          EvidenzeScreen(versione: _versioneEvidenze),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.photo_camera_outlined),
-            selectedIcon: Icon(Icons.photo_camera),
-            label: 'Certifica',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder),
-            label: 'Evidenze',
-          ),
-        ],
+      body: !certificazione
+          ? _SenzaCertificazione(securgest: utente?.haSecurgest ?? false)
+          : IndexedStack(
+              index: _tab,
+              children: [
+                _CertificaTab(
+                  utente: utente,
+                  conformita: _conformita,
+                  onConformita: _scegliConformita,
+                  voci: _voci,
+                  vociCaricate: _vociCaricate,
+                  erroreVoci: _erroreVoci,
+                  onRiprovaVoci: _caricaVoci,
+                  area: _area,
+                  onArea: (v) => setState(() => _area = v),
+                  nonConformita: _nonConformita,
+                  onNonConformita: (v) => setState(() => _nonConformita = v),
+                  onCreaVoce: _creaVoce,
+                  onEliminaVoce: _eliminaVoce,
+                  segnalazioneCompleta: _segnalazioneCompleta,
+                  onAcquisisci: _acquisisci,
+                ),
+                EvidenzeScreen(versione: _versioneEvidenze),
+              ],
+            ),
+      bottomNavigationBar: !certificazione
+          ? null
+          : NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: (i) => setState(() => _tab = i),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.photo_camera_outlined),
+                  selectedIcon: Icon(Icons.photo_camera),
+                  label: 'Certifica',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.folder_outlined),
+                  selectedIcon: Icon(Icons.folder),
+                  label: 'Evidenze',
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+/// Home without the Preposto plugin: no certification at all. With SecurGest
+/// its checks will live here (step K5 of D-204); without any plugin the
+/// account has nothing to do until the administrator switches one on.
+class _SenzaCertificazione extends StatelessWidget {
+  const _SenzaCertificazione({required this.securgest});
+
+  final bool securgest;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              securgest ? Icons.fact_check_outlined : Icons.lock_outline,
+              size: 48,
+              color: const Color(0xFF64748B),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              securgest ? 'SecurGest' : 'Nessuna funzione attiva',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              securgest
+                  ? 'Qui troverai i check da compilare per le tue sedi. La funzione è in arrivo.'
+                  : 'Per la tua azienda non ci sono funzioni attive. Contatta l\'amministratore.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Color(0xFF64748B)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -315,8 +378,7 @@ class _CertificaTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final u = utente;
-    final limiteRaggiunto =
-        u?.crediti != null && u!.crediti! <= 0;
+    final limiteRaggiunto = u?.crediti != null && u!.crediti! <= 0;
 
     return ListView(
       padding: const EdgeInsets.all(16),

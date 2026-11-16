@@ -7,6 +7,7 @@ class Utente {
     required this.maxUploadMb,
     this.crediti,
     this.creditiRiservati = false,
+    this.plugin = const ['preposto'],
   });
 
   factory Utente.fromJson(Map<String, dynamic> json) {
@@ -19,6 +20,11 @@ class Utente {
       maxUploadMb: json['max_upload_mb'] as int? ?? 10,
       crediti: crediti?['disponibili'] as int?,
       creditiRiservati: crediti?['riservati'] as bool? ?? false,
+      // Missing on servers (and saved profiles) older than D-204: back then
+      // the account existed only with the Preposto plugin.
+      plugin:
+          (json['plugin'] as List<dynamic>?)?.whereType<String>().toList() ??
+          const ['preposto'],
     );
   }
 
@@ -32,6 +38,14 @@ class Utente {
   final int? crediti;
   final bool creditiRiservati;
 
+  /// Plugins of the account family that use the preposto account (D-204):
+  /// `preposto` (certified photos) and/or `securgest` (periodic checks).
+  /// The app shows only the functions of the active ones.
+  final List<String> plugin;
+
+  bool get haCertificazione => plugin.contains('preposto');
+  bool get haSecurgest => plugin.contains('securgest');
+
   bool get isTest => ambiente != 'production';
   int get maxUploadBytes => maxUploadMb * 1024 * 1024;
 
@@ -43,6 +57,7 @@ class Utente {
     'max_upload_mb': maxUploadMb,
     if (crediti != null)
       'crediti': {'disponibili': crediti, 'riservati': creditiRiservati},
+    'plugin': plugin,
   };
 }
 
