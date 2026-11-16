@@ -160,8 +160,8 @@ void main() {
       await a.storicoCheck();
       expect(check.single.daFare, isTrue);
       expect(percorsi, [
-        '/api/v1/preposto/check',
-        '/api/v1/preposto/check/storico',
+        '$prefisso/api/v1/preposto/check',
+        '$prefisso/api/v1/preposto/check/storico',
       ]);
     },
   );
