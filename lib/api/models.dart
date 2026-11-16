@@ -1,3 +1,5 @@
+import 'dart:io';
+
 class Utente {
   Utente({
     required this.id,
@@ -281,3 +283,267 @@ enum FormatoReport {
 List<String> nomiVoci(Object? voci) => (voci as List? ?? const [])
     .map((v) => (v as Map)['nome'] as String)
     .toList();
+
+// ---------------------------------------------------------------- SecurGest
+
+/// One check to do (or done) in a site of the preposto: `GET /preposto/check`.
+class CheckDelGiorno {
+  CheckDelGiorno({
+    required this.pianificazioneId,
+    required this.sede,
+    this.citta,
+    required this.modello,
+    required this.domande,
+    required this.frequenza,
+    this.periodoAl,
+    required this.inPausa,
+    required this.stato,
+    this.ultimoNonConformita,
+    this.ultimoIl,
+  });
+
+  factory CheckDelGiorno.fromJson(Map<String, dynamic> json) {
+    final sede = json['sede'] as Map<String, dynamic>? ?? const {};
+    final modello = json['modello'] as Map<String, dynamic>? ?? const {};
+    final ultimo = json['ultimo'] as Map<String, dynamic>?;
+    return CheckDelGiorno(
+      pianificazioneId: json['pianificazione_id'] as int,
+      sede: sede['nome'] as String? ?? '',
+      citta: sede['citta'] as String?,
+      modello: modello['nome'] as String? ?? '',
+      domande: modello['domande'] as int? ?? 0,
+      frequenza: json['frequenza'] as String? ?? 'giornaliera',
+      periodoAl: (json['periodo'] as Map<String, dynamic>?)?['al'] as String?,
+      inPausa: json['in_pausa'] as bool? ?? false,
+      stato: json['stato'] as String? ?? 'non_previsto',
+      ultimoNonConformita: ultimo?['non_conformita'] as int?,
+      ultimoIl: ultimo?['il'] as String?,
+    );
+  }
+
+  final int pianificazioneId;
+  final String sede;
+  final String? citta;
+  final String modello;
+  final int domande;
+  final String frequenza;
+  final String? periodoAl;
+  final bool inPausa;
+
+  /// `da_fare`, `fatto` or `non_previsto`.
+  final String stato;
+  final int? ultimoNonConformita;
+  final String? ultimoIl;
+
+  bool get daFare => stato == 'da_fare' && !inPausa;
+}
+
+/// A possible answer of a choice question; `nonConforme` marks the problem.
+class OpzioneCheck {
+  OpzioneCheck({required this.testo, required this.nonConforme});
+
+  factory OpzioneCheck.fromJson(Map<String, dynamic> json) => OpzioneCheck(
+    testo: json['testo'] as String? ?? '',
+    nonConforme: json['non_conforme'] as bool? ?? false,
+  );
+
+  final String testo;
+  final bool nonConforme;
+}
+
+/// A question of a check template (`scelta`, `testo` or `foto`).
+class DomandaCheck {
+  DomandaCheck({
+    required this.chiave,
+    required this.testo,
+    this.aiuto,
+    required this.tipo,
+    required this.obbligatoria,
+    this.opzioni = const [],
+    this.nota = 'no',
+    this.foto = 'no',
+    this.righe = 1,
+  });
+
+  factory DomandaCheck.fromJson(Map<String, dynamic> json) => DomandaCheck(
+    chiave: json['chiave'] as String? ?? '',
+    testo: json['testo'] as String? ?? '',
+    aiuto: json['aiuto'] as String?,
+    tipo: json['tipo'] as String? ?? 'scelta',
+    obbligatoria: json['obbligatoria'] as bool? ?? true,
+    opzioni: [
+      for (final o in json['opzioni'] as List? ?? const [])
+        OpzioneCheck.fromJson(o as Map<String, dynamic>),
+    ],
+    nota: json['nota'] as String? ?? 'no',
+    foto: json['foto'] as String? ?? 'no',
+    righe: json['righe'] as int? ?? 1,
+  );
+
+  final String chiave;
+  final String testo;
+  final String? aiuto;
+  final String tipo;
+  final bool obbligatoria;
+  final List<OpzioneCheck> opzioni;
+
+  /// `no`, `facoltativa`, `se_nc` (required when non-conforming) or `sempre`.
+  final String nota;
+  final String foto;
+  final int righe;
+
+  /// Is the note / photo needed given the chosen answer?
+  /// Returns `no`, `facoltativa` or `obbligatoria`.
+  static String serve(String regola, bool nonConforme) {
+    if (regola == 'no') return 'no';
+    if (regola == 'sempre' || (regola == 'se_nc' && nonConforme)) {
+      return 'obbligatoria';
+    }
+    return regola == 'se_nc' ? 'no' : 'facoltativa';
+  }
+}
+
+class SezioneCheck {
+  SezioneCheck({this.titolo, required this.domande});
+
+  factory SezioneCheck.fromJson(Map<String, dynamic> json) => SezioneCheck(
+    titolo: json['titolo'] as String?,
+    domande: [
+      for (final d in json['domande'] as List? ?? const [])
+        DomandaCheck.fromJson(d as Map<String, dynamic>),
+    ],
+  );
+
+  final String? titolo;
+  final List<DomandaCheck> domande;
+}
+
+/// The form to fill: `GET /preposto/check/{id}`.
+class ModuloCheck {
+  ModuloCheck({
+    required this.pianificazioneId,
+    required this.sede,
+    required this.modello,
+    required this.versioneId,
+    required this.sezioni,
+    required this.fotoMb,
+    required this.fotoPerDomanda,
+  });
+
+  factory ModuloCheck.fromJson(Map<String, dynamic> json) {
+    final limiti = json['limiti'] as Map<String, dynamic>? ?? const {};
+    final struttura = json['struttura'] as Map<String, dynamic>? ?? const {};
+    return ModuloCheck(
+      pianificazioneId: json['pianificazione_id'] as int,
+      sede: (json['sede'] as Map<String, dynamic>?)?['nome'] as String? ?? '',
+      modello:
+          (json['modello'] as Map<String, dynamic>?)?['nome'] as String? ?? '',
+      versioneId: json['versione_id'] as int? ?? 0,
+      sezioni: [
+        for (final s in struttura['sezioni'] as List? ?? const [])
+          SezioneCheck.fromJson(s as Map<String, dynamic>),
+      ],
+      fotoMb: limiti['foto_mb'] as int? ?? 10,
+      fotoPerDomanda: limiti['foto_per_domanda'] as int? ?? 5,
+    );
+  }
+
+  final int pianificazioneId;
+  final String sede;
+  final String modello;
+  final int versioneId;
+  final List<SezioneCheck> sezioni;
+  final int fotoMb;
+  final int fotoPerDomanda;
+
+  int get totaleDomande => sezioni.fold(0, (n, s) => n + s.domande.length);
+}
+
+/// A sent check in the history: `GET /preposto/check/storico`.
+class CheckInviato {
+  CheckInviato({
+    required this.id,
+    required this.compilatoIl,
+    required this.sede,
+    required this.modello,
+    required this.domande,
+    required this.nonConformita,
+  });
+
+  factory CheckInviato.fromJson(Map<String, dynamic> json) => CheckInviato(
+    id: json['id'] as int,
+    compilatoIl: json['compilato_il'] as String? ?? '',
+    sede: (json['sede'] as Map<String, dynamic>?)?['nome'] as String? ?? '',
+    modello:
+        (json['modello'] as Map<String, dynamic>?)?['nome'] as String? ?? '',
+    domande: json['domande'] as int? ?? 0,
+    nonConformita: json['non_conformita'] as int? ?? 0,
+  );
+
+  final int id;
+  final String compilatoIl;
+  final String sede;
+  final String modello;
+  final int domande;
+  final int nonConformita;
+}
+
+class RispostaInviata {
+  RispostaInviata({
+    this.sezione,
+    required this.domanda,
+    required this.tipo,
+    this.risposta,
+    required this.nonConforme,
+    this.nota,
+    this.foto = const [],
+  });
+
+  factory RispostaInviata.fromJson(Map<String, dynamic> json) =>
+      RispostaInviata(
+        sezione: json['sezione'] as String?,
+        domanda: json['domanda'] as String? ?? '',
+        tipo: json['tipo'] as String? ?? 'scelta',
+        risposta: json['risposta'] as String?,
+        nonConforme: json['non_conforme'] as bool? ?? false,
+        nota: json['nota'] as String?,
+        foto: [
+          for (final f in json['foto'] as List? ?? const [])
+            (f as Map<String, dynamic>)['id'] as int,
+        ],
+      );
+
+  final String? sezione;
+  final String domanda;
+  final String tipo;
+  final String? risposta;
+  final bool nonConforme;
+  final String? nota;
+  final List<int> foto;
+}
+
+/// A sent check with its answers: `GET /preposto/check/compilati/{id}`.
+class DettaglioCheck {
+  DettaglioCheck({required this.riepilogo, required this.risposte});
+
+  factory DettaglioCheck.fromJson(Map<String, dynamic> json) => DettaglioCheck(
+    riepilogo: CheckInviato.fromJson(json),
+    risposte: [
+      for (final r in json['risposte'] as List? ?? const [])
+        RispostaInviata.fromJson(r as Map<String, dynamic>),
+    ],
+  );
+
+  final CheckInviato riepilogo;
+  final List<RispostaInviata> risposte;
+}
+
+/// What the preposto typed for a question before sending.
+class RispostaDaInviare {
+  RispostaDaInviare({this.risposta = '', this.nota = '', List<File>? foto})
+    : foto = foto ?? [];
+
+  String risposta;
+  String nota;
+  final List<File> foto;
+}

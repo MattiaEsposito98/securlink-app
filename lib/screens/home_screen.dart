@@ -7,6 +7,7 @@ import '../config.dart';
 import '../sessione.dart';
 import '../widgets.dart';
 import 'camera_screen.dart';
+import 'check_screen.dart';
 import 'evidenze_screen.dart';
 import 'password_screen.dart';
 
@@ -175,8 +176,51 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final utente = SessioneScope.of(context).utente;
     // Each plugin's functions exist in the app only when the family has it
-    // (D-204): without the Preposto plugin, no «Certifica» and no «Evidenze».
+    // (D-204): «Certifica» and «Evidenze» with the Preposto plugin, «Check»
+    // with SecurGest. One tab only: no bottom bar. None: nothing to do.
     final certificazione = utente?.haCertificazione ?? false;
+    final securgest = utente?.haSecurgest ?? false;
+    final schede = <_Scheda>[
+      if (certificazione)
+        _Scheda(
+          icona: Icons.photo_camera_outlined,
+          iconaScelta: Icons.photo_camera,
+          etichetta: 'Certifica',
+          pagina: _CertificaTab(
+            utente: utente,
+            conformita: _conformita,
+            onConformita: _scegliConformita,
+            voci: _voci,
+            vociCaricate: _vociCaricate,
+            erroreVoci: _erroreVoci,
+            onRiprovaVoci: _caricaVoci,
+            area: _area,
+            onArea: (v) => setState(() => _area = v),
+            nonConformita: _nonConformita,
+            onNonConformita: (v) => setState(() => _nonConformita = v),
+            onCreaVoce: _creaVoce,
+            onEliminaVoce: _eliminaVoce,
+            segnalazioneCompleta: _segnalazioneCompleta,
+            onAcquisisci: _acquisisci,
+          ),
+        ),
+      if (certificazione)
+        _Scheda(
+          icona: Icons.folder_outlined,
+          iconaScelta: Icons.folder,
+          etichetta: 'Evidenze',
+          pagina: EvidenzeScreen(versione: _versioneEvidenze),
+        ),
+      if (securgest)
+        const _Scheda(
+          icona: Icons.fact_check_outlined,
+          iconaScelta: Icons.fact_check,
+          etichetta: 'Check',
+          pagina: CheckTab(),
+        ),
+    ];
+    // A plugin switched off while a tab was open: stay on a tab that exists.
+    final tab = _tab < schede.length ? _tab : 0;
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 16,
@@ -247,94 +291,56 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         ],
       ),
-      body: !certificazione
-          ? _SenzaCertificazione(securgest: utente?.haSecurgest ?? false)
+      body: schede.isEmpty
+          ? const _SenzaFunzioni()
           : IndexedStack(
-              index: _tab,
-              children: [
-                _CertificaTab(
-                  utente: utente,
-                  conformita: _conformita,
-                  onConformita: _scegliConformita,
-                  voci: _voci,
-                  vociCaricate: _vociCaricate,
-                  erroreVoci: _erroreVoci,
-                  onRiprovaVoci: _caricaVoci,
-                  area: _area,
-                  onArea: (v) => setState(() => _area = v),
-                  nonConformita: _nonConformita,
-                  onNonConformita: (v) => setState(() => _nonConformita = v),
-                  onCreaVoce: _creaVoce,
-                  onEliminaVoce: _eliminaVoce,
-                  segnalazioneCompleta: _segnalazioneCompleta,
-                  onAcquisisci: _acquisisci,
-                ),
-                EvidenzeScreen(versione: _versioneEvidenze),
-              ],
+              index: tab,
+              children: [for (final s in schede) s.pagina],
             ),
-      bottomNavigationBar: !certificazione
+      bottomNavigationBar: schede.length < 2
           ? null
           : NavigationBar(
-              selectedIndex: _tab,
+              selectedIndex: tab,
               onDestinationSelected: (i) => setState(() => _tab = i),
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.photo_camera_outlined),
-                  selectedIcon: Icon(Icons.photo_camera),
-                  label: 'Certifica',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.folder_outlined),
-                  selectedIcon: Icon(Icons.folder),
-                  label: 'Evidenze',
-                ),
+              destinations: [
+                for (final s in schede)
+                  NavigationDestination(
+                    icon: Icon(s.icona),
+                    selectedIcon: Icon(s.iconaScelta),
+                    label: s.etichetta,
+                  ),
               ],
             ),
     );
   }
 }
 
-/// Home without the Preposto plugin: no certification at all. With SecurGest
-/// its checks will live here (step K5 of D-204); without any plugin the
-/// account has nothing to do until the administrator switches one on.
-class _SenzaCertificazione extends StatelessWidget {
-  const _SenzaCertificazione({required this.securgest});
+/// One tab of the home: the functions of an active plugin (D-204).
+class _Scheda {
+  const _Scheda({
+    required this.icona,
+    required this.iconaScelta,
+    required this.etichetta,
+    required this.pagina,
+  });
 
-  final bool securgest;
+  final IconData icona;
+  final IconData iconaScelta;
+  final String etichetta;
+  final Widget pagina;
+}
+
+/// No plugin active for the family: the account has nothing to do until the
+/// administrator switches one on (the app reloads the plugins on resume).
+class _SenzaFunzioni extends StatelessWidget {
+  const _SenzaFunzioni();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              securgest ? Icons.fact_check_outlined : Icons.lock_outline,
-              size: 48,
-              color: const Color(0xFF64748B),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              securgest ? 'SecurGest' : 'Nessuna funzione attiva',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              securgest
-                  ? 'Qui troverai i check da compilare per le tue sedi. La funzione è in arrivo.'
-                  : 'Per la tua azienda non ci sono funzioni attive. Contatta l\'amministratore.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Color(0xFF64748B)),
-            ),
-          ],
-        ),
-      ),
+    return const StatoVuoto(
+      icona: Icons.lock_outline,
+      titolo: 'Nessuna funzione attiva',
+      testo: 'Per la tua azienda non ci sono funzioni attive. Contatta l\'amministratore.',
     );
   }
 }

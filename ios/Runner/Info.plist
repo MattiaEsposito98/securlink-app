@@ -27,11 +27,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Securlink usa la fotocamera per scattare foto e registrare video dal vivo da certificare con marca temporale.</string>
+	<string>Securlink usa la fotocamera per scattare foto e registrare video dal vivo da certificare con marca temporale, e per allegare foto ai check di SecurGest.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Securlink usa il microfono per registrare l'audio dei video da certificare.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Securlink usa la posizione GPS per certificare il luogo in cui sono state acquisite foto e video.</string>
+	<string>Securlink usa la posizione GPS per certificare il luogo in cui sono state acquisite foto e video, e per registrare dove è stato compilato un check.</string>
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

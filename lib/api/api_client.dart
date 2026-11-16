@@ -11,8 +11,12 @@ import '../config.dart';
 import 'models.dart';
 
 class ApiException implements Exception {
-  ApiException(this.message);
+  ApiException(this.message, {this.dettagli = const []});
   final String message;
+
+  /// Every validation message, when the server sent several (e.g. one per
+  /// question of a check). `message` is the first one.
+  final List<String> dettagli;
 
   @override
   String toString() => message;
@@ -285,6 +289,90 @@ class SecurlinkApi {
     return File('${dir.path}/$nome').writeAsBytes(res.bodyBytes, flush: true);
   }
 
+  // ------------------------------------------------------------- SecurGest
+
+  /// The checks of the preposto's sites (D-204): to do first, then done.
+  Future<List<CheckDelGiorno>> check() async {
+    final dati = _dati(await _getJson('$_base/check'));
+    return [
+      for (final c in dati['check'] as List? ?? const [])
+        CheckDelGiorno.fromJson(c as Map<String, dynamic>),
+    ];
+  }
+
+  Future<ModuloCheck> moduloCheck(int pianificazioneId) async =>
+      ModuloCheck.fromJson(
+        _dati(await _getJson('$_base/check/$pianificazioneId')),
+      );
+
+  /// Sends a filled check (multipart, like the certification). The position
+  /// is optional: if the phone cannot give it the check goes without.
+  Future<String> inviaCheck({
+    required ModuloCheck modulo,
+    required Map<String, RispostaDaInviare> risposte,
+    double? lat,
+    double? lon,
+    double? accuratezza,
+  }) async {
+    final res = await _autenticata((headers) async {
+      final req =
+          http.MultipartRequest(
+              'POST',
+              _uri('$_base/check/${modulo.pianificazioneId}'),
+            )
+            ..headers.addAll(headers)
+            ..fields['versione_id'] = '${modulo.versioneId}';
+      if (lat != null && lon != null) {
+        req.fields['gps_lat'] = '$lat';
+        req.fields['gps_lon'] = '$lon';
+        if (accuratezza != null) req.fields['gps_accuratezza'] = '$accuratezza';
+      }
+      for (final e in risposte.entries) {
+        if (e.value.risposta.isNotEmpty) {
+          req.fields['risposte[${e.key}][risposta]'] = e.value.risposta;
+        }
+        if (e.value.nota.trim().isNotEmpty) {
+          req.fields['risposte[${e.key}][nota]'] = e.value.nota.trim();
+        }
+        for (final f in e.value.foto) {
+          req.files.add(
+            await http.MultipartFile.fromPath('foto[${e.key}][]', f.path),
+          );
+        }
+      }
+      return http.Response.fromStream(await _http.send(req));
+    }, timeout: _timeoutLungo);
+    final json = _jsonOk(res);
+    return json['message'] as String? ?? 'Check inviato.';
+  }
+
+  Future<List<CheckInviato>> storicoCheck() async {
+    final json = await _getJson('$_base/check/storico');
+    return [
+      for (final c in json['data'] as List? ?? const [])
+        CheckInviato.fromJson(c as Map<String, dynamic>),
+    ];
+  }
+
+  Future<DettaglioCheck> dettaglioCheck(int id) async =>
+      DettaglioCheck.fromJson(
+        _dati(await _getJson('$_base/check/compilati/$id')),
+      );
+
+  /// A photo of a sent check (private: it needs the token), cached.
+  Future<File> fotoCheck(int id) async {
+    final dir = await getApplicationCacheDirectory();
+    final file = File('${dir.path}/check/$id.jpg');
+    if (await file.exists()) return file;
+    final res = await _autenticata(
+      (headers) => _http.get(_uri('$_base/check/foto/$id'), headers: headers),
+      timeout: _timeoutLungo,
+    );
+    _verificaOk(res);
+    await file.parent.create(recursive: true);
+    return file.writeAsBytes(res.bodyBytes, flush: true);
+  }
+
   // -------------------------------------------------------------- plumbing
 
   Uri _uri(String path, [Map<String, String>? query]) =>
@@ -383,9 +471,21 @@ class SecurlinkApi {
         'Errore interno del server (${res.statusCode}). Riprova tra poco; se si ripete contatta Securlav.',
       );
     }
+    final json = _decodifica(res);
     throw ApiException(
-      _messaggio(_decodifica(res)) ?? 'Errore del server (${res.statusCode}).',
+      _messaggio(json) ?? 'Errore del server (${res.statusCode}).',
+      dettagli: _tuttiIMessaggi(json),
     );
+  }
+
+  /// All the validation messages (one per field), in the server's order.
+  List<String> _tuttiIMessaggi(Map<String, dynamic> json) {
+    final errori = json['errors'];
+    if (errori is! Map) return const [];
+    return [
+      for (final v in errori.values)
+        if (v is List && v.isNotEmpty && v.first is String) v.first as String,
+    ];
   }
 
   /// Laravel validation errors come as `errors: {field: [message]}`; otherwise `message`.
