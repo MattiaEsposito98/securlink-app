@@ -7,11 +7,15 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:securlink/api/api_client.dart';
 import 'package:securlink/api/models.dart';
+import 'package:securlink/config.dart';
 
 /// The contract of the SecurGest check calls with the server (D-204): paths,
 /// multipart field names and the way the validation errors come back.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  // kBaseUrl may carry a path (the dev server behind the Funnel).
+  final prefisso = Uri.parse(kBaseUrl).path.replaceAll(RegExp(r'/+$'), '');
 
   Future<SecurlinkApi> api(MockClient client) async {
     FlutterSecureStorage.setMockInitialValues({'access_token': 'tok'});
@@ -63,7 +67,7 @@ void main() {
 
       expect(messaggio, 'Check inviato, con 1 non conformità.');
       expect(visto.method, 'POST');
-      expect(visto.url.path, '/api/v1/preposto/check/2');
+      expect(visto.url.path, '$prefisso/api/v1/preposto/check/2');
       expect(visto.headers['Authorization'], 'Bearer tok');
       expect(corpo, contains('name="versione_id"'));
       expect(corpo, contains('name="risposte[d_abc][risposta]"'));
@@ -161,4 +165,19 @@ void main() {
       ]);
     },
   );
+
+  test('the paths of the API are built on the base address', () async {
+    final percorsi = <Uri>[];
+    final client = MockClient((req) async {
+      percorsi.add(req.url);
+      return http.Response(
+        '{"data":{"check":[]}}',
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    await (await api(client)).check();
+    expect(percorsi.single.path, '$prefisso/api/v1/preposto/check');
+    expect(percorsi.single.host, Uri.parse(kBaseUrl).host);
+  });
 }

@@ -375,8 +375,13 @@ class SecurlinkApi {
 
   // -------------------------------------------------------------- plumbing
 
-  Uri _uri(String path, [Map<String, String>? query]) =>
-      Uri.parse(kBaseUrl).replace(path: path, queryParameters: query);
+  /// `kBaseUrl` may carry a path (the dev server behind the Funnel lives at
+  /// `https://…/securlink`): the API paths go after it. In production it has none.
+  Uri _uri(String path, [Map<String, String>? query]) {
+    final base = Uri.parse(kBaseUrl);
+    final prefisso = base.path.replaceAll(RegExp(r'/+$'), '');
+    return base.replace(path: '$prefisso$path', queryParameters: query);
+  }
 
   Map<String, String> _headersBase() => {
     'Accept': 'application/json',
