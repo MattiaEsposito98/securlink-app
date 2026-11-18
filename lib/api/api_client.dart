@@ -373,6 +373,49 @@ class SecurlinkApi {
     return file.writeAsBytes(res.bodyBytes, flush: true);
   }
 
+  // -------------------------------------------------------------- SecurMiss
+
+  /// The near-miss form (D-207): the preposto's sites, the causes, the choices
+  /// and the last reports he sent. Same routes as the site.
+  Future<DatiNearMiss> nearMiss() async =>
+      DatiNearMiss.fromJson(_dati(await _getJson('$_base/near-miss')));
+
+  /// Sends a near-miss report (multipart, up to 5 photos). The reporter is the
+  /// account itself; `da=app` tells the server where it came from.
+  Future<int> inviaNearMiss(NearMissDaInviare n) async {
+    final res = await _autenticata((headers) async {
+      final req = http.MultipartRequest('POST', _uri('$_base/near-miss'))
+        ..headers.addAll(headers)
+        ..fields['da'] = 'app'
+        ..fields['cantiere_id'] = '${n.cantiereId}'
+        ..fields['data_evento'] = n.dataEvento
+        ..fields['descrizione'] = n.descrizione.trim()
+        ..fields['azioni_immediate'] = n.azioniImmediate.trim();
+      if (n.punto.trim().isNotEmpty) req.fields['punto'] = n.punto.trim();
+      if (n.casisticaId != null) {
+        req.fields['casistica_id'] = '${n.casisticaId}';
+      } else {
+        req.fields['causa_altro'] = n.causaAltro.trim();
+      }
+      // A field map cannot repeat a name: the lists go with their index.
+      for (final e in n.rischi.indexed) {
+        req.fields['rischi[${e.$1}]'] = e.$2;
+      }
+      for (final e in n.origini.indexed) {
+        req.fields['origini[${e.$1}]'] = e.$2;
+      }
+      if (n.origini.contains('altro')) {
+        req.fields['origine_altro'] = n.origineAltro.trim();
+      }
+      for (final f in n.foto) {
+        req.files.add(await http.MultipartFile.fromPath('foto[]', f.path));
+      }
+      return http.Response.fromStream(await _http.send(req));
+    }, timeout: _timeoutLungo);
+    final json = _jsonOk(res);
+    return (json['data'] as Map<String, dynamic>?)?['numero'] as int? ?? 0;
+  }
+
   // -------------------------------------------------------------- plumbing
 
   /// `kBaseUrl` may carry a path (the dev server behind the Funnel lives at

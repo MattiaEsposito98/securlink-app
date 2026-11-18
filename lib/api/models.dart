@@ -47,6 +47,7 @@ class Utente {
 
   bool get haCertificazione => plugin.contains('preposto');
   bool get haSecurgest => plugin.contains('securgest');
+  bool get haSecurmiss => plugin.contains('securmiss');
 
   bool get isTest => ambiente != 'production';
   int get maxUploadBytes => maxUploadMb * 1024 * 1024;
@@ -545,5 +546,164 @@ class RispostaDaInviare {
 
   String risposta;
   String nota;
+  final List<File> foto;
+}
+
+// ------------------------------------------------------------- SecurMiss
+
+/// A cause the reporter can pick (D-207): the server hides the ones the family
+/// does not use. The immediate actions are only a starting point.
+class CasisticaNearMiss {
+  CasisticaNearMiss({
+    required this.id,
+    required this.numero,
+    required this.causa,
+    required this.azioniImmediate,
+  });
+
+  factory CasisticaNearMiss.fromJson(Map<String, dynamic> json) =>
+      CasisticaNearMiss(
+        id: json['id'] as int,
+        numero: json['numero'] as int? ?? 0,
+        causa: json['causa'] as String? ?? '',
+        azioniImmediate: json['azioni_immediate'] as String? ?? '',
+      );
+
+  final int id;
+  final int numero;
+  final String causa;
+  final String azioniImmediate;
+}
+
+class SedeNearMiss {
+  SedeNearMiss({required this.id, required this.nome, this.citta});
+
+  factory SedeNearMiss.fromJson(Map<String, dynamic> json) => SedeNearMiss(
+    id: json['id'] as int,
+    nome: json['nome'] as String? ?? '',
+    citta: json['citta'] as String?,
+  );
+
+  final int id;
+  final String nome;
+  final String? citta;
+
+  String get etichetta =>
+      citta == null || citta!.isEmpty ? nome : '$nome, $citta';
+}
+
+class VoceNearMiss {
+  VoceNearMiss({required this.codice, required this.nome});
+
+  factory VoceNearMiss.fromJson(Map<String, dynamic> json) => VoceNearMiss(
+    codice: json['codice'] as String,
+    nome: json['nome'] as String? ?? '',
+  );
+
+  final String codice;
+  final String nome;
+}
+
+class NearMissInviato {
+  NearMissInviato({
+    required this.id,
+    required this.numero,
+    required this.sede,
+    required this.dataEvento,
+    required this.causa,
+    required this.stato,
+  });
+
+  factory NearMissInviato.fromJson(Map<String, dynamic> json) =>
+      NearMissInviato(
+        id: json['id'] as int,
+        numero: json['numero'] as int? ?? 0,
+        sede: json['sede'] as String? ?? '',
+        dataEvento: json['data_evento'] as String? ?? '',
+        causa: json['causa'] as String? ?? '',
+        stato: json['stato'] as String? ?? 'nuova',
+      );
+
+  final int id;
+  final int numero;
+  final String sede;
+  final String dataEvento;
+  final String causa;
+  final String stato;
+
+  String get statoEtichetta => switch (stato) {
+    'in_analisi' => 'In analisi',
+    'chiusa' => 'Chiusa',
+    _ => 'Ricevuta',
+  };
+}
+
+/// What the near-miss form needs: the sites where the preposto works, the
+/// causes, the risk and origin choices, and the last reports he sent.
+class DatiNearMiss {
+  DatiNearMiss({
+    required this.sedi,
+    required this.casistiche,
+    required this.rischi,
+    required this.origini,
+    required this.inviate,
+    required this.segnalatore,
+    required this.oggi,
+    required this.fotoMax,
+  });
+
+  factory DatiNearMiss.fromJson(Map<String, dynamic> json) {
+    List<T> lista<T>(String chiave, T Function(Map<String, dynamic>) da) => [
+      for (final e in json[chiave] as List? ?? const [])
+        da(e as Map<String, dynamic>),
+    ];
+    return DatiNearMiss(
+      sedi: lista('sedi', SedeNearMiss.fromJson),
+      casistiche: lista('casistiche', CasisticaNearMiss.fromJson),
+      rischi: lista('rischi', VoceNearMiss.fromJson),
+      origini: lista('origini', VoceNearMiss.fromJson),
+      inviate: lista('inviate', NearMissInviato.fromJson),
+      segnalatore: json['segnalatore'] as String? ?? '',
+      oggi: json['oggi'] as String? ?? '',
+      fotoMax: json['foto_max'] as int? ?? 5,
+    );
+  }
+
+  final List<SedeNearMiss> sedi;
+  final List<CasisticaNearMiss> casistiche;
+  final List<VoceNearMiss> rischi;
+  final List<VoceNearMiss> origini;
+  final List<NearMissInviato> inviate;
+  final String segnalatore;
+  final String oggi;
+  final int fotoMax;
+}
+
+/// A near-miss report as filled in the app, ready to be sent.
+class NearMissDaInviare {
+  NearMissDaInviare({
+    required this.cantiereId,
+    required this.dataEvento,
+    required this.descrizione,
+    required this.azioniImmediate,
+    required this.rischi,
+    required this.origini,
+    this.casisticaId,
+    this.causaAltro = '',
+    this.punto = '',
+    this.origineAltro = '',
+    this.foto = const [],
+  });
+
+  final int cantiereId;
+  final String dataEvento;
+  final String descrizione;
+  final String azioniImmediate;
+  final List<String> rischi;
+  final List<String> origini;
+  final int? casisticaId;
+  final String causaAltro;
+  final String punto;
+  final String origineAltro;
   final List<File> foto;
 }

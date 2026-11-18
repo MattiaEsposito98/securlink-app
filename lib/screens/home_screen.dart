@@ -9,6 +9,7 @@ import '../widgets.dart';
 import 'camera_screen.dart';
 import 'check_screen.dart';
 import 'evidenze_screen.dart';
+import 'near_miss_screen.dart';
 import 'password_screen.dart';
 
 enum _VoceAccount { password, esci }
@@ -177,9 +178,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final utente = SessioneScope.of(context).utente;
     // Each plugin's functions exist in the app only when the family has it
     // (D-204): «Certifica» and «Evidenze» with the Preposto plugin, «Check»
-    // with SecurGest. One tab only: no bottom bar. None: nothing to do.
+    // with SecurGest, «Near miss» with SecurMiss (D-207). One tab only:
+    // no bottom bar. None: nothing to do.
     final certificazione = utente?.haCertificazione ?? false;
     final securgest = utente?.haSecurgest ?? false;
+    final securmiss = utente?.haSecurmiss ?? false;
     final schede = <_Scheda>[
       if (certificazione)
         _Scheda(
@@ -217,6 +220,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           iconaScelta: Icons.fact_check,
           etichetta: 'Check',
           pagina: CheckTab(),
+        ),
+      if (securmiss)
+        const _Scheda(
+          icona: Icons.warning_amber_outlined,
+          iconaScelta: Icons.warning_amber_rounded,
+          etichetta: 'Near miss',
+          pagina: NearMissTab(),
         ),
     ];
     // A plugin switched off while a tab was open: stay on a tab that exists.
